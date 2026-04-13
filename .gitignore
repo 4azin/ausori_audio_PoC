@@ -26,16 +26,11 @@ yarn-debug.log*
 yarn-error.log*
 .pnpm-debug.log*
 
-# === Java/Spring (Back) ===
-*.class
-*.jar
-*.war
-*.ear
-target/
+# === Express/TypeScript (Back) ===
+node_modules/
+dist/
 build/
-out/
-.gradle/
-!gradle/wrapper/gradle-wrapper.jar
+*.tsbuildinfo
 
 # === Python ===
 __pycache__/
