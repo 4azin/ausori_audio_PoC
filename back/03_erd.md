@@ -67,17 +67,8 @@ erDiagram
         timestamp created_at
     }
 
-    refresh_tokens {
-        uuid id PK
-        uuid user_id FK
-        string token UK
-        timestamp expires_at
-        timestamp created_at
-    }
-
     users ||--o{ projects : "has"
     users ||--o| sound_designers : "can be"
-    users ||--o{ refresh_tokens : "has"
     projects ||--o{ tracks : "has"
     tracks ||--o{ track_events : "has"
     track_events }o--|| sound_assets : "uses"
@@ -164,16 +155,6 @@ erDiagram
 | display_name | VARCHAR | 판매자 표시 이름 |
 | bio | TEXT | 소개 |
 | revenue_share_rate | FLOAT | 수익 배분율 (기본 0.7 = 70%) |
-
-### refresh_tokens
-JWT Refresh Token 관리.
-
-| 컬럼 | 타입 | 설명 |
-|------|------|------|
-| id | UUID | PK |
-| user_id | UUID | FK → users |
-| token | VARCHAR | Refresh Token 값 (unique, hashed) |
-| expires_at | TIMESTAMP | 만료일 |
 
 ---
 
