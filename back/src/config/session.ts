@@ -1,6 +1,6 @@
 import { RedisStore } from "connect-redis";
 
-import { redisClient } from "./redis";
+import { redisClient } from "./redis/client";
 
 /** 세션 설정 — Redis를 세션 스토어로 사용 */
 export const sessionConfig = {
