@@ -21,6 +21,7 @@ erDiagram
         uuid id PK
         uuid user_id FK
         string title
+        string thumbnail_url
         enum status "uploading | analyzing | ready | rendering | done | failed"
         string original_video_url
         string final_video_url
@@ -34,6 +35,9 @@ erDiagram
         uuid project_id FK
         enum type "dialogue | music | background | foley | sfx | cinematic"
         int volume "0~100"
+        int pan "-100~100"
+        boolean is_muted
+        boolean is_solo
         int order
     }
 
@@ -43,8 +47,19 @@ erDiagram
         uuid sound_asset_id FK
         float start_time
         float end_time
+        float offset "원본 오디오 트림 시작점"
         int volume_override "0~100"
+        float fade_in "페이드 인 (초)"
+        float fade_out "페이드 아웃 (초)"
         boolean is_user_edited
+    }
+
+    project_snapshots {
+        uuid id PK
+        uuid project_id FK
+        int version
+        jsonb snapshot "tracks + events 전체 상태"
+        timestamp created_at
     }
 
     category_major {
@@ -94,6 +109,7 @@ erDiagram
         timestamp created_at
     }
 
+    projects ||--o{ project_snapshots : "has"
     users ||--o{ projects : "has"
     users ||--o| sound_designers : "can be"
     projects ||--o{ tracks : "has"
@@ -135,6 +151,7 @@ erDiagram
 | id | UUID | PK |
 | user_id | UUID | FK → users |
 | title | VARCHAR | 프로젝트 이름 |
+| thumbnail_url | VARCHAR | 프로젝트 썸네일 (영상 첫 프레임 등) |
 | status | ENUM | 처리 상태 (uploading → analyzing → ready → ...) |
 | original_video_url | VARCHAR | 원본 영상 파일 경로 |
 | final_video_url | VARCHAR | 최종 렌더링된 영상 파일 경로 |
@@ -149,6 +166,9 @@ erDiagram
 | project_id | UUID | FK → projects |
 | type | ENUM | dialogue / music / background / foley / sfx / cinematic |
 | volume | INT | 트랙 전체 볼륨 (0 ~ 100) |
+| pan | INT | 좌우 패닝 (-100 ~ 100, 0이 중앙) |
+| is_muted | BOOLEAN | 트랙 뮤트 상태 |
+| is_solo | BOOLEAN | 트랙 솔로 상태 |
 | order | INT | 에디터 표시 순서 |
 
 ### track_events
@@ -161,8 +181,22 @@ erDiagram
 | sound_asset_id | UUID | FK → sound_assets |
 | start_time | FLOAT | 효과음 시작 시간 (초) |
 | end_time | FLOAT | 효과음 종료 시간 (초) |
+| offset | FLOAT | 원본 오디오 트림 시작점 (초) |
 | volume_override | INT | 이벤트 개별 볼륨 오버라이드 (0 ~ 100) |
+| fade_in | FLOAT | 페이드 인 길이 (초) |
+| fade_out | FLOAT | 페이드 아웃 길이 (초) |
 | is_user_edited | BOOLEAN | 사용자가 수동 편집했는지 여부 |
+
+### project_snapshots
+프로젝트 편집 히스토리. 버전별 전체 상태를 JSON으로 저장.
+
+| 컬럼 | 타입 | 설명 |
+|------|------|------|
+| id | UUID | PK |
+| project_id | UUID | FK → projects |
+| version | INT | 스냅샷 버전 번호 |
+| snapshot | JSONB | tracks + events 전체 상태 |
+| created_at | TIMESTAMP | 생성일 |
 
 ### category_major / category_mid / category_sub
 효과음 3단계 분류 체계 (대분류 → 중분류 → 소분류).
