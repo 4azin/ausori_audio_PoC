@@ -32,7 +32,7 @@ erDiagram
         uuid id PK
         uuid project_id FK
         enum type "dialogue | music | background | foley | sfx | cinematic"
-        float volume
+        int volume "0~100"
         int order
     }
 
@@ -42,7 +42,7 @@ erDiagram
         uuid sound_asset_id FK
         float start_time
         float end_time
-        float volume_override
+        int volume_override "0~100"
         boolean is_user_edited
     }
 
@@ -146,7 +146,7 @@ erDiagram
 | id | UUID | PK |
 | project_id | UUID | FK → projects |
 | type | ENUM | dialogue / music / background / foley / sfx / cinematic |
-| volume | FLOAT | 트랙 전체 볼륨 (0.0 ~ 1.0) |
+| volume | INT | 트랙 전체 볼륨 (0 ~ 100) |
 | order | INT | 에디터 표시 순서 |
 
 ### track_events
@@ -159,7 +159,7 @@ erDiagram
 | sound_asset_id | UUID | FK → sound_assets |
 | start_time | FLOAT | 효과음 시작 시간 (초) |
 | end_time | FLOAT | 효과음 종료 시간 (초) |
-| volume_override | FLOAT | 이벤트 개별 볼륨 오버라이드 |
+| volume_override | INT | 이벤트 개별 볼륨 오버라이드 (0 ~ 100) |
 | is_user_edited | BOOLEAN | 사용자가 수동 편집했는지 여부 |
 
 ### category_major / category_mid / category_sub
@@ -168,13 +168,13 @@ erDiagram
 | 테이블 | 컬럼 | 타입 | 설명 |
 |--------|------|------|------|
 | category_major | id | UUID | PK |
-| | name | VARCHAR | 대분류 (ambience, foley, sfx, music, cinematic) |
+| | name | VARCHAR | 대분류 |
 | category_mid | id | UUID | PK |
 | | major_id | UUID | FK → category_major |
-| | name | VARCHAR | 중분류 (weather, footsteps, impact 등) |
+| | name | VARCHAR | 중분류 |
 | category_sub | id | UUID | PK |
 | | mid_id | UUID | FK → category_mid |
-| | name | VARCHAR | 소분류 (rain, thunder, snow 등) |
+| | name | VARCHAR | 소분류 |
 
 ### sound_assets
 효과음 파일 메타데이터. 기본 라이브러리 + 마켓플레이스 에셋 모두 포함.
@@ -194,7 +194,7 @@ erDiagram
 | bpm | INT | BPM (음악만, 나머지 NULL) |
 | instruments | TEXT[] | 악기 목록 (음악만) |
 | duration | FLOAT | 효과음 길이 (초) |
-| format | VARCHAR | 파일 포맷 (mp3, ogg) |
+| format | VARCHAR | 파일 포맷 (mp3, ogg, wav) |
 | file_size | INT | 파일 크기 (bytes) |
 | download_count | INT | 사용 횟수 |
 | embedding | VECTOR(3072) | Gemini 임베딩 벡터 |
