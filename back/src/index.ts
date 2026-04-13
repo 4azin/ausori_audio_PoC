@@ -5,6 +5,7 @@ import { connectRedis } from "./config/redis";
 import { sessionConfig } from "./config/session";
 import { errorHandler } from "./middleware/errorHandler";
 import userRouter from "./users/user.router";
+import projectRouter from "./projects/project.router";
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -25,6 +26,7 @@ app.get("/health", (_req, res) => {
 
 /** 도메인 라우터 등록 */
 app.use("/api/users", userRouter);
+app.use("/api/projects", projectRouter);
 
 /** 전역 에러 핸들러 — 반드시 라우터 등록 이후에 배치 */
 app.use(errorHandler);
