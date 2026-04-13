@@ -93,6 +93,7 @@ erDiagram
         uuid designer_id FK "nullable (null이면 기본 라이브러리)"
         string file_name
         string s3_key
+        string original_path "디자이너 원본 폴더 경로"
         uuid major_id FK
         uuid mid_id FK
         uuid sub_id FK "nullable"
@@ -243,6 +244,7 @@ erDiagram
 | designer_id | UUID | FK → sound_designers (null이면 기본 라이브러리) |
 | file_name | VARCHAR | 파일 이름 |
 | s3_key | VARCHAR | S3 저장 경로 |
+| original_path | VARCHAR | 디자이너 업로드 시 원본 폴더 경로 (nullable, 트리 복원용) |
 | major_id | UUID | FK → category_major (NOT NULL) |
 | mid_id | UUID | FK → category_mid (NOT NULL) |
 | sub_id | UUID | FK → category_sub (nullable) |
