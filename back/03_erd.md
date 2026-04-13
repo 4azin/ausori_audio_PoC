@@ -10,6 +10,7 @@ erDiagram
         string name
         string profile_image_url
         string google_id UK
+        enum role "user | designer | admin"
         enum plan "free | pro"
         int monthly_usage_count
         timestamp created_at
@@ -120,6 +121,7 @@ erDiagram
 | name | VARCHAR | 표시 이름 |
 | profile_image_url | VARCHAR | Google 프로필 이미지 URL |
 | google_id | VARCHAR | Google 고유 ID (unique) |
+| role | ENUM | user / designer / admin |
 | plan | ENUM | free / pro |
 | monthly_usage_count | INT | 당월 프로젝트 생성 수 (무료 플랜 제한용) |
 | created_at | TIMESTAMP | 가입일 |
