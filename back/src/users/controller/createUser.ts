@@ -1,10 +1,9 @@
 import { Request, Response } from "express";
-import { userService } from "../service";
-import { createUserDto } from "../dto";
+import { createUser as createUserService } from "../service";
 
-/** 유저 생성 — req.body를 검증 후 service에 위임 */
+/** 유저 생성 — validate 미들웨어에서 검증 완료된 body 사용 */
 export async function createUser(req: Request, res: Response) {
-  const parsed = createUserDto.parse(req.body);
-  const user = await userService.createUser(parsed.email, parsed.nickname);
+  const { email, nickname } = req.body;
+  const user = await createUserService(email, nickname);
   res.status(201).json(user);
 }

@@ -1,4 +1,6 @@
 import { Router } from "express";
+import { validate } from "../middleware/validate";
+import { createUserDto, updateUserDto } from "./dto";
 import {
   getUsers,
   getUserById,
@@ -19,10 +21,12 @@ router.get("/:id",
 );
 
 router.post("/",
+    validate(createUserDto),
     createUser
 );
 
 router.patch("/:id",
+    validate(updateUserDto),
     updateUser
 );
 
