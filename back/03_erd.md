@@ -79,6 +79,7 @@ erDiagram
         float duration
         string format "mp3 | ogg"
         int file_size "bytes"
+        int download_count "사용 횟수"
         vector embedding "vector(3072) Gemini 임베딩"
         timestamp created_at
     }
@@ -195,6 +196,7 @@ erDiagram
 | duration | FLOAT | 효과음 길이 (초) |
 | format | VARCHAR | 파일 포맷 (mp3, ogg) |
 | file_size | INT | 파일 크기 (bytes) |
+| download_count | INT | 사용 횟수 |
 | embedding | VECTOR(3072) | Gemini 임베딩 벡터 |
 | created_at | TIMESTAMP | 생성일 |
 
