@@ -46,15 +46,40 @@ erDiagram
         boolean is_user_edited
     }
 
+    category_major {
+        uuid id PK
+        string name UK "ambience | foley | sfx | music | cinematic"
+    }
+
+    category_mid {
+        uuid id PK
+        uuid major_id FK
+        string name "weather | footsteps | impact 등"
+    }
+
+    category_sub {
+        uuid id PK
+        uuid mid_id FK
+        string name "rain | thunder | snow 등"
+    }
+
     sound_assets {
         uuid id PK
         uuid designer_id FK "nullable (null이면 기본 라이브러리)"
-        string name
-        string file_url
-        enum category "dialogue | music | background | foley | sfx | cinematic"
-        string[] tags
-        float duration_seconds
-        int download_count
+        string file_name
+        string s3_key
+        uuid major_id FK
+        uuid mid_id FK
+        uuid sub_id FK "nullable"
+        text[] mood "calm, peaceful 등"
+        text[] tags "rain, window, interior 등"
+        string description
+        int bpm "음악만, 나머지 NULL"
+        text[] instruments "음악만"
+        float duration
+        string format "mp3 | ogg"
+        int file_size "bytes"
+        vector embedding "vector(3072) Gemini 임베딩"
         timestamp created_at
     }
 
@@ -73,6 +98,11 @@ erDiagram
     tracks ||--o{ track_events : "has"
     track_events }o--|| sound_assets : "uses"
     sound_designers ||--o{ sound_assets : "uploads"
+    category_major ||--o{ category_mid : "has"
+    category_mid ||--o{ category_sub : "has"
+    category_major ||--o{ sound_assets : "classifies"
+    category_mid ||--o{ sound_assets : "classifies"
+    category_sub ||--o{ sound_assets : "classifies"
 ```
 
 ---
@@ -131,6 +161,20 @@ erDiagram
 | volume_override | FLOAT | 이벤트 개별 볼륨 오버라이드 |
 | is_user_edited | BOOLEAN | 사용자가 수동 편집했는지 여부 |
 
+### category_major / category_mid / category_sub
+효과음 3단계 분류 체계 (대분류 → 중분류 → 소분류).
+
+| 테이블 | 컬럼 | 타입 | 설명 |
+|--------|------|------|------|
+| category_major | id | UUID | PK |
+| | name | VARCHAR | 대분류 (ambience, foley, sfx, music, cinematic) |
+| category_mid | id | UUID | PK |
+| | major_id | UUID | FK → category_major |
+| | name | VARCHAR | 중분류 (weather, footsteps, impact 등) |
+| category_sub | id | UUID | PK |
+| | mid_id | UUID | FK → category_mid |
+| | name | VARCHAR | 소분류 (rain, thunder, snow 등) |
+
 ### sound_assets
 효과음 파일 메타데이터. 기본 라이브러리 + 마켓플레이스 에셋 모두 포함.
 
@@ -138,12 +182,21 @@ erDiagram
 |------|------|------|
 | id | UUID | PK |
 | designer_id | UUID | FK → sound_designers (null이면 기본 라이브러리) |
-| name | VARCHAR | 효과음 이름 |
-| file_url | VARCHAR | 파일 경로 |
-| category | ENUM | 트랙 유형 |
-| tags | VARCHAR[] | 검색/매칭용 태그 |
-| duration_seconds | FLOAT | 효과음 길이 |
-| download_count | INT | 사용 횟수 |
+| file_name | VARCHAR | 파일 이름 |
+| s3_key | VARCHAR | S3 저장 경로 |
+| major_id | UUID | FK → category_major (NOT NULL) |
+| mid_id | UUID | FK → category_mid (NOT NULL) |
+| sub_id | UUID | FK → category_sub (nullable) |
+| mood | TEXT[] | 분위기 태그 (calm, peaceful 등) |
+| tags | TEXT[] | 검색/매칭용 태그 (rain, window 등) |
+| description | TEXT | 효과음 설명 |
+| bpm | INT | BPM (음악만, 나머지 NULL) |
+| instruments | TEXT[] | 악기 목록 (음악만) |
+| duration | FLOAT | 효과음 길이 (초) |
+| format | VARCHAR | 파일 포맷 (mp3, ogg) |
+| file_size | INT | 파일 크기 (bytes) |
+| embedding | VECTOR(3072) | Gemini 임베딩 벡터 |
+| created_at | TIMESTAMP | 생성일 |
 
 ### sound_designers
 효과음 마켓플레이스 판매자.
