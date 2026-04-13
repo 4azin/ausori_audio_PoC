@@ -38,20 +38,26 @@ erDiagram
         boolean is_muted
         boolean is_solo
         int order
+        timestamp created_at
+        timestamp updated_at
     }
 
     tracks {
         uuid id PK
+        uuid project_id FK "비정규화 — 조인 없이 프로젝트 단위 조회"
         uuid group_id FK
         string name
         int volume "0~100"
         int pan "-100~100"
         boolean is_muted
         int order
+        timestamp created_at
+        timestamp updated_at
     }
 
     track_events {
         uuid id PK
+        uuid project_id FK "비정규화 — 조인 없이 프로젝트 단위 조회"
         uuid track_id FK
         uuid sound_asset_id FK
         float start_time
@@ -61,6 +67,8 @@ erDiagram
         float fade_in "페이드 인 (초)"
         float fade_out "페이드 아웃 (초)"
         boolean is_user_edited
+        timestamp created_at
+        timestamp updated_at
     }
 
     project_snapshots {
@@ -180,6 +188,8 @@ erDiagram
 | is_muted | BOOLEAN | 그룹 뮤트 상태 |
 | is_solo | BOOLEAN | 그룹 솔로 상태 |
 | order | INT | 에디터 표시 순서 |
+| created_at | TIMESTAMP | 생성일 |
+| updated_at | TIMESTAMP | 수정일 |
 
 ### tracks
 그룹 하위의 개별 트랙. 하나의 그룹 안에 여러 트랙이 존재할 수 있음.
@@ -187,12 +197,15 @@ erDiagram
 | 컬럼 | 타입 | 설명 |
 |------|------|------|
 | id | UUID | PK |
+| project_id | UUID | FK → projects (비정규화) |
 | group_id | UUID | FK → track_groups |
 | name | VARCHAR | 트랙 이름 |
 | volume | INT | 트랙 볼륨 (0 ~ 100) |
 | pan | INT | 좌우 패닝 (-100 ~ 100, 0이 중앙) |
 | is_muted | BOOLEAN | 트랙 뮤트 상태 |
 | order | INT | 그룹 내 표시 순서 |
+| created_at | TIMESTAMP | 생성일 |
+| updated_at | TIMESTAMP | 수정일 |
 
 ### track_events
 각 트랙에 배치된 효과음 이벤트 (AI 결과 + 사용자 편집 내용).
@@ -200,6 +213,7 @@ erDiagram
 | 컬럼 | 타입 | 설명 |
 |------|------|------|
 | id | UUID | PK |
+| project_id | UUID | FK → projects (비정규화) |
 | track_id | UUID | FK → tracks |
 | sound_asset_id | UUID | FK → sound_assets |
 | start_time | FLOAT | 효과음 시작 시간 (초) |
@@ -209,6 +223,8 @@ erDiagram
 | fade_in | FLOAT | 페이드 인 길이 (초) |
 | fade_out | FLOAT | 페이드 아웃 길이 (초) |
 | is_user_edited | BOOLEAN | 사용자가 수동 편집했는지 여부 |
+| created_at | TIMESTAMP | 생성일 |
+| updated_at | TIMESTAMP | 수정일 |
 
 ### project_snapshots
 프로젝트 편집 히스토리. 버전별 전체 상태를 JSON으로 저장.
@@ -279,3 +295,5 @@ erDiagram
 - **soft delete 미적용**: 초기 MVP에서는 하드 삭제 사용
 - **sound_assets의 designer_id nullable**: 기본 라이브러리(null)와 마켓플레이스 에셋을 동일 테이블로 관리
 - **track_events의 is_user_edited**: AI 결과와 사용자 편집 내역을 구분하여 추후 AI 개선 데이터로 활용 가능
+- **tracks/track_events의 project_id 비정규화**: 에디터 로드 시 3단 조인(track_events → tracks → track_groups → projects) 회피. 읽기 빈도가 압도적인 실시간 에디터 특성에 맞춤
+- **전 테이블 created_at/updated_at**: 디버깅, 정렬, 향후 멀티유저 협업 시 conflict resolution 대비
