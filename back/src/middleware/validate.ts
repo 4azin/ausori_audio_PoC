@@ -8,6 +8,7 @@ import { ZodType } from "zod/v4";
 export function validate(schema: ZodType) {
   return (req: Request, _res: Response, next: NextFunction) => {
     req.body = schema.parse(req.body);
+
     next();
   };
 }
