@@ -2,6 +2,7 @@ import { Router } from "express";
 
 import { validate } from "../middleware/validate";
 import { isAuthenticated } from "../middleware/auth";
+import { upload } from "../middleware/upload";
 import { createProjectDto, updateProjectDto, saveProjectDto } from "./dto";
 import {
   getProjects,
@@ -11,6 +12,7 @@ import {
   deleteProject,
   saveProject,
   loadProject,
+  uploadVideo,
 } from "./controller";
 
 /** Project 라우터 — URL과 핸들러 매핑만 담당 */
@@ -49,6 +51,12 @@ router.post("/:id/save",
 
 router.get("/:id/load",
     loadProject
+);
+
+/** 영상 업로드 */
+router.post("/:id/video",
+    upload({ allow: "video", maxSize: 500_000_000 }),
+    uploadVideo
 );
 
 export default router;

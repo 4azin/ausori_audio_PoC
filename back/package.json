@@ -14,13 +14,17 @@
     "connect-redis": "^9.0.0",
     "express": "^5.1.0",
     "express-session": "^1.19.0",
+    "multer": "^2.1.1",
     "redis": "^5.11.0",
+    "uuid": "^13.0.0",
     "zod": "^4.3.6"
   },
   "devDependencies": {
     "@types/express": "^5.0.0",
     "@types/express-session": "^1.18.2",
+    "@types/multer": "^2.1.0",
     "@types/node": "^22.0.0",
+    "@types/uuid": "^10.0.0",
     "ts-node": "^10.9.2",
     "typescript": "^5.8.0"
   }
