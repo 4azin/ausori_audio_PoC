@@ -111,7 +111,7 @@ erDiagram
         int bpm "음악만, 나머지 NULL"
         text[] instruments "음악만"
         float duration
-        string format "mp3 | ogg"
+        string format "mp3 | ogg | wav"
         int file_size "bytes"
         int download_count "사용 횟수"
         vector embedding "vector(3072) Gemini 임베딩"

@@ -1,0 +1,1151 @@
+openapi: 3.0.3
+info:
+  title: Final PJT API
+  version: 1.0.0
+  description: |
+    `back/04_api_spec.md`를 기반으로 정리한 목표 계약용 OpenAPI 문서입니다.
+    현재 구현 상태를 설명하는 문서가 아니라, 앞으로 백엔드가 맞춰갈 공개 API 계약을 시각화하기 위한 Swagger 문서입니다.
+
+servers:
+  - url: http://localhost:3000
+    description: Local development
+
+tags:
+  - name: Users
+    description: 로그인, 세션, 내 계정 관리
+  - name: Designers
+    description: 사운드 디자이너 온보딩 및 업로드 관리
+  - name: Projects
+    description: 영상 업로드, 분석, 진행률, 스냅샷
+  - name: Sounds
+    description: 효과음 검색 및 상세 조회
+  - name: Marketplace
+    description: 디자이너 업로드 에셋 조회
+
+components:
+  securitySchemes:
+    SessionCookie:
+      type: apiKey
+      in: cookie
+      name: connect.sid
+
+  parameters:
+    Page:
+      name: page
+      in: query
+      schema:
+        type: integer
+        minimum: 1
+        default: 1
+      description: 페이지 번호
+    Limit10:
+      name: limit
+      in: query
+      schema:
+        type: integer
+        minimum: 1
+        default: 10
+      description: 페이지당 개수
+    Limit20:
+      name: limit
+      in: query
+      schema:
+        type: integer
+        minimum: 1
+        default: 20
+      description: 페이지당 개수
+    ProjectId:
+      name: id
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+    SoundId:
+      name: soundId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+    DesignerId:
+      name: designerId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+    SnapshotVersion:
+      name: version
+      in: path
+      required: true
+      schema:
+        type: integer
+
+  schemas:
+    ErrorEnvelope:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: false
+        error:
+          type: object
+          properties:
+            code:
+              type: string
+              example: UNAUTHORIZED
+            message:
+              type: string
+              example: 로그인이 필요합니다
+          required: [code, message]
+      required: [success, error]
+
+    User:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        email:
+          type: string
+          format: email
+        name:
+          type: string
+        profileImageUrl:
+          type: string
+          format: uri
+        role:
+          type: string
+          enum: [user, designer, admin]
+        plan:
+          type: string
+          enum: [free, pro]
+      required: [id, email, name, role, plan]
+
+    UserMe:
+      allOf:
+        - $ref: '#/components/schemas/User'
+        - type: object
+          properties:
+            monthlyUsageCount:
+              type: integer
+            createdAt:
+              type: string
+              format: date-time
+          required: [monthlyUsageCount, createdAt]
+
+    Designer:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        userId:
+          type: string
+          format: uuid
+        displayName:
+          type: string
+        bio:
+          type: string
+          nullable: true
+        revenueShareRate:
+          type: number
+          format: float
+        role:
+          type: string
+          enum: [designer]
+        createdAt:
+          type: string
+          format: date-time
+      required: [id, userId, displayName, revenueShareRate]
+
+    DesignerProfile:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        displayName:
+          type: string
+        bio:
+          type: string
+          nullable: true
+        revenueShareRate:
+          type: number
+          format: float
+        soundCount:
+          type: integer
+        totalDownloads:
+          type: integer
+      required: [id, displayName, revenueShareRate, soundCount, totalDownloads]
+
+    SoundCategory:
+      type: object
+      properties:
+        major:
+          type: string
+        mid:
+          type: string
+        sub:
+          type: string
+          nullable: true
+      required: [major, mid]
+
+    SoundDesignerRef:
+      type: object
+      nullable: true
+      properties:
+        id:
+          type: string
+          format: uuid
+        displayName:
+          type: string
+
+    SoundSummary:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        fileName:
+          type: string
+        category:
+          $ref: '#/components/schemas/SoundCategory'
+        mood:
+          type: array
+          items:
+            type: string
+        tags:
+          type: array
+          items:
+            type: string
+        duration:
+          type: number
+          format: float
+        format:
+          type: string
+          enum: [mp3, ogg, wav]
+        designer:
+          $ref: '#/components/schemas/SoundDesignerRef'
+      required: [id, fileName, category, duration, format]
+
+    SoundDetail:
+      allOf:
+        - $ref: '#/components/schemas/SoundSummary'
+        - type: object
+          properties:
+            description:
+              type: string
+            fileSize:
+              type: integer
+            downloadCount:
+              type: integer
+          required: [description, fileSize, downloadCount]
+
+    DesignerSoundSummary:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        fileName:
+          type: string
+        category:
+          $ref: '#/components/schemas/SoundCategory'
+        duration:
+          type: number
+          format: float
+        format:
+          type: string
+          enum: [mp3, ogg, wav]
+        downloadCount:
+          type: integer
+        createdAt:
+          type: string
+          format: date-time
+      required: [id, fileName, category, duration, format, downloadCount]
+
+    SoundEvent:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          nullable: true
+        soundAssetId:
+          type: string
+          format: uuid
+        startTime:
+          type: number
+          format: float
+        endTime:
+          type: number
+          format: float
+        offset:
+          type: number
+          format: float
+        volumeOverride:
+          type: integer
+        fadeIn:
+          type: number
+          format: float
+        fadeOut:
+          type: number
+          format: float
+        isUserEdited:
+          type: boolean
+      required:
+        [soundAssetId, startTime, endTime, offset, volumeOverride, fadeIn, fadeOut, isUserEdited]
+
+    Track:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          nullable: true
+        name:
+          type: string
+        volume:
+          type: integer
+        pan:
+          type: integer
+        isMuted:
+          type: boolean
+        order:
+          type: integer
+        events:
+          type: array
+          items:
+            $ref: '#/components/schemas/SoundEvent'
+      required: [name, volume, pan, isMuted, order, events]
+
+    TrackGroup:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          nullable: true
+        type:
+          type: string
+          enum: [dialogue, music, background, foley, sfx, cinematic]
+        volume:
+          type: integer
+        isMuted:
+          type: boolean
+        isSolo:
+          type: boolean
+        order:
+          type: integer
+        tracks:
+          type: array
+          items:
+            $ref: '#/components/schemas/Track'
+      required: [type, volume, isMuted, isSolo, order, tracks]
+
+    Snapshot:
+      type: object
+      properties:
+        version:
+          type: integer
+        trackGroups:
+          type: array
+          items:
+            $ref: '#/components/schemas/TrackGroup'
+      required: [version, trackGroups]
+
+    ProjectSummary:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        title:
+          type: string
+        thumbnailUrl:
+          type: string
+          format: uri
+          nullable: true
+        status:
+          type: string
+          enum: [uploading, analyzing, ready, rendering, done, failed]
+        durationSeconds:
+          type: integer
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+      required: [id, title, status, durationSeconds, createdAt, updatedAt]
+
+    ProjectDetail:
+      allOf:
+        - $ref: '#/components/schemas/ProjectSummary'
+        - type: object
+          properties:
+            originalVideoUrl:
+              type: string
+              format: uri
+            finalVideoUrl:
+              type: string
+              format: uri
+              nullable: true
+            snapshot:
+              $ref: '#/components/schemas/Snapshot'
+          required: [originalVideoUrl, snapshot]
+
+    ProjectStatus:
+      type: object
+      properties:
+        projectId:
+          type: string
+          format: uuid
+        jobId:
+          type: string
+        status:
+          type: string
+          enum: [pending, analyzing, ready, rendering, done, failed]
+        currentStage:
+          type: string
+          enum: [pending, scene_splitting, analyzing, refining_timing, matching, placing, done, failed]
+        progress:
+          type: integer
+          minimum: 0
+          maximum: 100
+        snapshotVersion:
+          type: integer
+        updatedAt:
+          type: string
+          format: date-time
+      required: [projectId, status, progress]
+
+    SnapshotMeta:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        version:
+          type: integer
+        createdAt:
+          type: string
+          format: date-time
+      required: [id, version, createdAt]
+
+    CategoryNode:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        children:
+          type: array
+          items:
+            $ref: '#/components/schemas/CategoryNode'
+      required: [id, name]
+
+paths:
+  /health:
+    get:
+      tags: [Users]
+      summary: 헬스체크
+      security: []
+      responses:
+        '200':
+          description: 서버 상태 확인
+
+  /api/users/google:
+    post:
+      tags: [Users]
+      summary: Google OAuth 로그인 / 신규 회원가입
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [code]
+              properties:
+                code:
+                  type: string
+      responses:
+        '200':
+          description: 세션 쿠키 발급 후 사용자 정보 반환
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    $ref: '#/components/schemas/User'
+                required: [success, data]
+        '400':
+          description: 유효하지 않은 OAuth code
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+
+  /api/users/logout:
+    post:
+      tags: [Users]
+      summary: 로그아웃
+      security:
+        - SessionCookie: []
+      responses:
+        '200':
+          description: 세션 파기 완료
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    nullable: true
+                required: [success, data]
+
+  /api/users/me:
+    get:
+      tags: [Users]
+      summary: 내 프로필 조회
+      security:
+        - SessionCookie: []
+      responses:
+        '200':
+          description: 내 사용자 정보
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    $ref: '#/components/schemas/UserMe'
+                required: [success, data]
+        '401':
+          description: 로그인 필요
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+    patch:
+      tags: [Users]
+      summary: 내 프로필 수정
+      security:
+        - SessionCookie: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+      responses:
+        '200':
+          description: 수정된 사용자 정보
+    delete:
+      tags: [Users]
+      summary: 회원 탈퇴
+      security:
+        - SessionCookie: []
+      responses:
+        '200':
+          description: 계정 삭제 완료
+
+  /api/designers/register:
+    post:
+      tags: [Designers]
+      summary: 사운드 디자이너 온보딩
+      description: 중복 호출이 발생해도 role 승격과 sound_designers 생성은 한 번만 반영됩니다.
+      security:
+        - SessionCookie: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [displayName]
+              properties:
+                displayName:
+                  type: string
+                bio:
+                  type: string
+      responses:
+        '201':
+          description: 디자이너 등록 완료
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    $ref: '#/components/schemas/Designer'
+                required: [success, data]
+        '409':
+          description: 이미 디자이너인 사용자
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+
+  /api/designers/me:
+    get:
+      tags: [Designers]
+      summary: 내 디자이너 프로필 조회
+      security:
+        - SessionCookie: []
+      responses:
+        '200':
+          description: 디자이너 프로필
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    $ref: '#/components/schemas/DesignerProfile'
+                required: [success, data]
+    patch:
+      tags: [Designers]
+      summary: 내 디자이너 프로필 수정
+      security:
+        - SessionCookie: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                displayName:
+                  type: string
+                bio:
+                  type: string
+      responses:
+        '200':
+          description: 수정 완료
+
+  /api/designers/me/sounds:
+    get:
+      tags: [Designers]
+      summary: 내가 업로드한 사운드 에셋 목록
+      security:
+        - SessionCookie: []
+      parameters:
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/Limit20'
+      responses:
+        '200':
+          description: 업로드 목록
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    type: object
+                    properties:
+                      sounds:
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/DesignerSoundSummary'
+                      total:
+                        type: integer
+                      page:
+                        type: integer
+                      limit:
+                        type: integer
+                    required: [sounds, total, page, limit]
+                required: [success, data]
+    post:
+      tags: [Designers]
+      summary: 사운드 에셋 업로드
+      security:
+        - SessionCookie: []
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [file, majorId, midId, tags]
+              properties:
+                file:
+                  type: string
+                  format: binary
+                originalPath:
+                  type: string
+                majorId:
+                  type: string
+                  format: uuid
+                midId:
+                  type: string
+                  format: uuid
+                subId:
+                  type: string
+                  format: uuid
+                mood:
+                  type: array
+                  items:
+                    type: string
+                tags:
+                  type: array
+                  items:
+                    type: string
+                description:
+                  type: string
+                bpm:
+                  type: integer
+                instruments:
+                  type: array
+                  items:
+                    type: string
+      responses:
+        '201':
+          description: 업로드 완료
+
+  /api/designers/me/sounds/{soundId}:
+    patch:
+      tags: [Designers]
+      summary: 사운드 에셋 메타데이터 수정
+      security:
+        - SessionCookie: []
+      parameters:
+        - $ref: '#/components/parameters/SoundId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                tags:
+                  type: array
+                  items:
+                    type: string
+                description:
+                  type: string
+                mood:
+                  type: array
+                  items:
+                    type: string
+      responses:
+        '200':
+          description: 수정 완료
+    delete:
+      tags: [Designers]
+      summary: 사운드 에셋 삭제
+      security:
+        - SessionCookie: []
+      parameters:
+        - $ref: '#/components/parameters/SoundId'
+      responses:
+        '200':
+          description: 삭제 완료
+
+  /api/projects:
+    get:
+      tags: [Projects]
+      summary: 내 프로젝트 목록
+      security:
+        - SessionCookie: []
+      parameters:
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/Limit10'
+      responses:
+        '200':
+          description: 프로젝트 목록
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    type: object
+                    properties:
+                      projects:
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/ProjectSummary'
+                      total:
+                        type: integer
+                      page:
+                        type: integer
+                      limit:
+                        type: integer
+                    required: [projects, total, page, limit]
+                required: [success, data]
+    post:
+      tags: [Projects]
+      summary: 새 프로젝트 생성
+      description: 무료 플랜은 월 최대 3개 프로젝트만 생성할 수 있습니다.
+      security:
+        - SessionCookie: []
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [video]
+              properties:
+                video:
+                  type: string
+                  format: binary
+                title:
+                  type: string
+      responses:
+        '201':
+          description: 프로젝트 생성 완료
+        '429':
+          description: 무료 플랜 한도 초과
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+
+  /api/projects/{id}:
+    get:
+      tags: [Projects]
+      summary: 프로젝트 상세 조회
+      security:
+        - SessionCookie: []
+      parameters:
+        - $ref: '#/components/parameters/ProjectId'
+      responses:
+        '200':
+          description: 최신 스냅샷 포함 상세
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    $ref: '#/components/schemas/ProjectDetail'
+                required: [success, data]
+    patch:
+      tags: [Projects]
+      summary: 프로젝트 제목 수정
+      security:
+        - SessionCookie: []
+      parameters:
+        - $ref: '#/components/parameters/ProjectId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                title:
+                  type: string
+      responses:
+        '200':
+          description: 수정 완료
+    delete:
+      tags: [Projects]
+      summary: 프로젝트 삭제
+      security:
+        - SessionCookie: []
+      parameters:
+        - $ref: '#/components/parameters/ProjectId'
+      responses:
+        '200':
+          description: 삭제 완료
+
+  /api/projects/{id}/status:
+    get:
+      tags: [Projects]
+      summary: 프로젝트 비동기 작업 상태 조회
+      description: AI 분석/렌더의 진행률은 Redis worker 상태를 기반으로 노출됩니다.
+      security:
+        - SessionCookie: []
+      parameters:
+        - $ref: '#/components/parameters/ProjectId'
+      responses:
+        '200':
+          description: 진행률 및 현재 단계
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    $ref: '#/components/schemas/ProjectStatus'
+                required: [success, data]
+
+  /api/projects/{id}/analyze:
+    post:
+      tags: [Projects]
+      summary: AI 분석 요청
+      description: 비동기 작업을 enqueue하고, 이후 `/api/projects/{id}/status`를 polling합니다.
+      security:
+        - SessionCookie: []
+      parameters:
+        - $ref: '#/components/parameters/ProjectId'
+      responses:
+        '202':
+          description: 분석 작업 접수 완료
+
+  /api/projects/{id}/render:
+    post:
+      tags: [Projects]
+      summary: 최종 영상 렌더링 요청
+      security:
+        - SessionCookie: []
+      parameters:
+        - $ref: '#/components/parameters/ProjectId'
+      responses:
+        '202':
+          description: 렌더 작업 접수 완료
+
+  /api/projects/{id}/snapshots:
+    post:
+      tags: [Projects]
+      summary: 스냅샷 저장
+      description: 이벤트의 `isUserEdited` 값은 저장 및 복원 시 유지되어야 합니다.
+      security:
+        - SessionCookie: []
+      parameters:
+        - $ref: '#/components/parameters/ProjectId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                trackGroups:
+                  type: array
+                  items:
+                    $ref: '#/components/schemas/TrackGroup'
+              required: [trackGroups]
+      responses:
+        '201':
+          description: 새 스냅샷 생성
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    $ref: '#/components/schemas/SnapshotMeta'
+                required: [success, data]
+    get:
+      tags: [Projects]
+      summary: 스냅샷 히스토리 조회
+      security:
+        - SessionCookie: []
+      parameters:
+        - $ref: '#/components/parameters/ProjectId'
+      responses:
+        '200':
+          description: 스냅샷 목록
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    type: object
+                    properties:
+                      snapshots:
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/SnapshotMeta'
+                    required: [snapshots]
+                required: [success, data]
+
+  /api/projects/{id}/snapshots/{version}/restore:
+    post:
+      tags: [Projects]
+      summary: 특정 스냅샷 버전으로 복원
+      security:
+        - SessionCookie: []
+      parameters:
+        - $ref: '#/components/parameters/ProjectId'
+        - $ref: '#/components/parameters/SnapshotVersion'
+      responses:
+        '200':
+          description: 복원 완료
+
+  /api/sounds:
+    get:
+      tags: [Sounds]
+      summary: 효과음 검색
+      security:
+        - SessionCookie: []
+      parameters:
+        - name: majorId
+          in: query
+          schema:
+            type: string
+            format: uuid
+        - name: midId
+          in: query
+          schema:
+            type: string
+            format: uuid
+        - name: subId
+          in: query
+          schema:
+            type: string
+            format: uuid
+        - name: mood
+          in: query
+          schema:
+            type: string
+        - name: q
+          in: query
+          schema:
+            type: string
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/Limit20'
+      responses:
+        '200':
+          description: 사운드 검색 결과
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    type: object
+                    properties:
+                      sounds:
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/SoundSummary'
+                      total:
+                        type: integer
+                      page:
+                        type: integer
+                      limit:
+                        type: integer
+                    required: [sounds, total, page, limit]
+                required: [success, data]
+
+  /api/sounds/categories:
+    get:
+      tags: [Sounds]
+      summary: 카테고리 전체 트리 조회
+      security:
+        - SessionCookie: []
+      responses:
+        '200':
+          description: 카테고리 트리
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/CategoryNode'
+                required: [success, data]
+
+  /api/sounds/{id}:
+    get:
+      tags: [Sounds]
+      summary: 효과음 단건 상세 조회
+      security:
+        - SessionCookie: []
+      parameters:
+        - $ref: '#/components/parameters/ProjectId'
+      responses:
+        '200':
+          description: 사운드 상세
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    $ref: '#/components/schemas/SoundDetail'
+                required: [success, data]
+
+  /api/marketplace:
+    get:
+      tags: [Marketplace]
+      summary: 마켓플레이스 에셋 목록
+      description: `designer_id IS NOT NULL`인 에셋만 조회합니다.
+      security:
+        - SessionCookie: []
+      parameters:
+        - name: majorId
+          in: query
+          schema:
+            type: string
+            format: uuid
+        - name: q
+          in: query
+          schema:
+            type: string
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/Limit20'
+      responses:
+        '200':
+          description: 마켓플레이스 목록
+
+  /api/marketplace/designers/{designerId}:
+    get:
+      tags: [Marketplace]
+      summary: 특정 디자이너 프로필 + 업로드 에셋 목록
+      security:
+        - SessionCookie: []
+      parameters:
+        - $ref: '#/components/parameters/DesignerId'
+      responses:
+        '200':
+          description: 디자이너 페이지
