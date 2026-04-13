@@ -1,0 +1,97 @@
+{
+  "version": "2.2",
+  "description": "오디오 분류 체계 원천 데이터 — 프론트엔드/백엔드/파이프라인 공용",
+  "categories": [
+    {
+      "key": "Ambience",
+      "label": "Ambience",
+      "mids": {
+        "Nature": ["Forest", "Ocean", "River", "Birds", "Insects", "Wildlife", "Underwater"],
+        "Urban": ["City_Traffic", "Street", "Market", "Subway", "Sirens", "Airport"],
+        "Interior": ["Office", "Restaurant", "Hospital", "School", "Home", "Mall", "Bar", "Kitchen", "Roomtone"],
+        "Exterior": ["Park", "Parking_Lot", "Stadium", "Harbor", "Highway"],
+        "Weather": ["Rain", "Thunder", "Wind", "Snow", "Hail", "Storm"],
+        "Machine_Room": ["Factory", "Engine", "HVAC", "Construction"],
+        "Crowd": ["Walla", "Children", "Sports", "Battle", "Cheer"],
+        "Designed": ["Sci_Fi", "Fantasy", "Horror", "Abstract"]
+      }
+    },
+    {
+      "key": "Cinematic",
+      "label": "Cinematic",
+      "mids": {
+        "Riser": ["Short", "Long", "Reverse", "Swell", "Tension"],
+        "Hit": ["Cinematic", "Sub", "Orchestral", "Hybrid", "Trailer", "Bass_Drop"],
+        "Whoosh": ["Fast", "Slow", "Flyby", "Sweep", "Scene_Transition"],
+        "Drone": ["Dark", "Bright", "Evolving", "Granular", "Noise"],
+        "Stinger": ["Orchestra", "Synth", "Brass", "Horror"],
+        "Texture": ["Organic", "Synthetic", "Metallic", "Abstract", "Industrial"],
+        "Horror": ["Scare", "Creep", "Gore", "Creature", "Atmosphere"],
+        "Sci_Fi": ["Laser", "Hologram", "Warp", "Energy", "Robot"],
+        "Tension": ["Build", "Sustain", "Release", "Psychological"],
+        "Transition": ["Cut", "Fade", "Swipe", "Swoosh", "Hit"],
+        "Fantasy": ["Magic", "Sparkle", "Enchant", "Portal", "Spell"]
+      }
+    },
+    {
+      "key": "Dialogue_VO",
+      "label": "Dialogue / VO",
+      "mids": {
+        "Dialogue": ["Conversation", "Argument", "Whisper"],
+        "Narration": ["Documentary", "Storytelling", "Instructional"],
+        "Crowd_Dialogue": ["Walla", "Chatter", "Murmur"],
+        "Announcement": ["Public_Address", "Broadcast", "Intercom"],
+        "Synthetic": ["AI", "Robot", "Vocoder"]
+      }
+    },
+    {
+      "key": "Foley",
+      "label": "Foley",
+      "mids": {
+        "Footsteps": ["Concrete", "Wood", "Gravel", "Grass", "Metal", "Carpet", "Tile", "Snow", "Mud", "Sand"],
+        "Cloth": ["Jacket", "Dress", "Denim", "Leather", "Nylon"],
+        "Door_Window": ["Open", "Close", "Knock", "Creak", "Slide"],
+        "Object": ["Cup_Glass", "Paper", "Plastic", "Metal", "Wood", "Box", "Bag", "Key"],
+        "Body": ["Clap", "Snap", "Slap", "Stomp", "Fall", "Jump"],
+        "Furniture": ["Chair", "Drawer", "Cabinet", "Table"],
+        "Food_Drink": ["Chew", "Sip", "Pour", "Swallow", "Bottle"],
+        "Liquid": ["Pour", "Splash", "Drip", "Bubble"],
+        "Material_Texture": ["Friction", "Scrape", "Shatter", "Crumple", "Crack", "Ice"],
+        "Writing": ["Pen", "Pencil", "Keyboard", "Chalk"]
+      }
+    },
+    {
+      "key": "SFX",
+      "label": "SFX",
+      "mids": {
+        "Impact": ["Punch", "Slam", "Metal", "Wood", "Body", "Thud", "Debris"],
+        "Explosion": ["Small", "Large", "Distant", "Fireworks", "Debris"],
+        "Weapon": ["Pistol", "Rifle", "Shotgun", "Automatic", "Sword", "Bow", "Laser", "Reload"],
+        "Vehicle": ["Car", "Motorcycle", "Truck", "Helicopter", "Airplane", "Boat", "Train", "Bicycle"],
+        "Mechanical": ["Motor", "Gear", "Lock", "Switch", "Hydraulic", "Engine", "Power_Tool"],
+        "Electrical": ["Spark", "Buzz", "Zap", "Short_Circuit"],
+        "Animal": ["Dog", "Cat", "Bird", "Horse", "Insect", "Monster"],
+        "Human": ["Breath", "Scream", "Laugh", "Grunt", "Cough", "Cry"],
+        "Fire": ["Campfire", "Torch", "Inferno", "Match"],
+        "Water": ["Splash", "Drip", "Underwater", "Wave"],
+        "UI": ["Click", "Beep", "Notification", "Alert", "Error", "Hover", "Swipe", "Success", "Level_Up"],
+        "Electronic": ["Glitch", "Digital", "Synth", "Alarm", "Computer"],
+        "Communication": ["Ring", "Dial_Tone", "Static", "Feedback"],
+        "Sports": ["Ball", "Whistle", "Bat", "Net"],
+        "Instrument": ["Guitar_Hit", "Piano_Note", "Cymbal", "Drum_Hit"],
+        "Cartoon": ["Boing", "Splat", "Pop", "Squeak", "Toy"]
+      }
+    },
+    {
+      "key": "Music",
+      "label": "Music",
+      "mids": {
+        "BGM": ["Cinematic", "Lo_fi", "Electronic", "Orchestral", "Acoustic", "Rock", "Jazz", "Hip_Hop"],
+        "Jingle": ["Intro", "Outro", "Notification"],
+        "Synth_Pad": ["Ambient", "Dark", "Bright"],
+        "Score": ["Orchestral", "Electronic", "Hybrid"],
+        "Percussion": ["Acoustic", "Electronic", "World"]
+      }
+    }
+  ]
+}
