@@ -30,14 +30,23 @@ erDiagram
         timestamp updated_at
     }
 
-    tracks {
+    track_groups {
         uuid id PK
         uuid project_id FK
         enum type "dialogue | music | background | foley | sfx | cinematic"
         int volume "0~100"
-        int pan "-100~100"
         boolean is_muted
         boolean is_solo
+        int order
+    }
+
+    tracks {
+        uuid id PK
+        uuid group_id FK
+        string name
+        int volume "0~100"
+        int pan "-100~100"
+        boolean is_muted
         int order
     }
 
@@ -112,7 +121,8 @@ erDiagram
     projects ||--o{ project_snapshots : "has"
     users ||--o{ projects : "has"
     users ||--o| sound_designers : "can be"
-    projects ||--o{ tracks : "has"
+    projects ||--o{ track_groups : "has"
+    track_groups ||--o{ tracks : "contains"
     tracks ||--o{ track_events : "has"
     track_events }o--|| sound_assets : "uses"
     sound_designers ||--o{ sound_assets : "uploads"
@@ -157,19 +167,31 @@ erDiagram
 | final_video_url | VARCHAR | 최종 렌더링된 영상 파일 경로 |
 | duration_seconds | INT | 영상 길이 (초) |
 
-### tracks
-프로젝트 내 6개 트랙. 프로젝트 생성 시 자동으로 6개 생성됨.
+### track_groups
+트랙 대분류 그룹. 프로젝트 생성 시 6개 자동 생성됨.
 
 | 컬럼 | 타입 | 설명 |
 |------|------|------|
 | id | UUID | PK |
 | project_id | UUID | FK → projects |
 | type | ENUM | dialogue / music / background / foley / sfx / cinematic |
-| volume | INT | 트랙 전체 볼륨 (0 ~ 100) |
+| volume | INT | 그룹 전체 볼륨 (0 ~ 100) |
+| is_muted | BOOLEAN | 그룹 뮤트 상태 |
+| is_solo | BOOLEAN | 그룹 솔로 상태 |
+| order | INT | 에디터 표시 순서 |
+
+### tracks
+그룹 하위의 개별 트랙. 하나의 그룹 안에 여러 트랙이 존재할 수 있음.
+
+| 컬럼 | 타입 | 설명 |
+|------|------|------|
+| id | UUID | PK |
+| group_id | UUID | FK → track_groups |
+| name | VARCHAR | 트랙 이름 |
+| volume | INT | 트랙 볼륨 (0 ~ 100) |
 | pan | INT | 좌우 패닝 (-100 ~ 100, 0이 중앙) |
 | is_muted | BOOLEAN | 트랙 뮤트 상태 |
-| is_solo | BOOLEAN | 트랙 솔로 상태 |
-| order | INT | 에디터 표시 순서 |
+| order | INT | 그룹 내 표시 순서 |
 
 ### track_events
 각 트랙에 배치된 효과음 이벤트 (AI 결과 + 사용자 편집 내용).
