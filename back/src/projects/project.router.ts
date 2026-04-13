@@ -2,13 +2,15 @@ import { Router } from "express";
 
 import { validate } from "../middleware/validate";
 import { isAuthenticated } from "../middleware/auth";
-import { createProjectDto, updateProjectDto } from "./dto";
+import { createProjectDto, updateProjectDto, saveProjectDto } from "./dto";
 import {
   getProjects,
   getProjectById,
   createProject,
   updateProject,
   deleteProject,
+  saveProject,
+  loadProject,
 } from "./controller";
 
 /** Project 라우터 — URL과 핸들러 매핑만 담당 */
@@ -37,6 +39,16 @@ router.patch("/:id",
 
 router.delete("/:id",
     deleteProject
+);
+
+/** 에디터 상태 저장 / 로드 */
+router.post("/:id/save",
+    validate(saveProjectDto),
+    saveProject
+);
+
+router.get("/:id/load",
+    loadProject
 );
 
 export default router;
