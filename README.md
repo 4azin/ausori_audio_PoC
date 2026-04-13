@@ -1,4 +1,34 @@
+# 프로젝트 문서
 
+이 프로젝트는 영상을 업로드하면 AI가 장면을 분석하여 적절한 효과음을 자동으로 선택하고, 타임라인에 배치해주는 AI 기반 사운드 디자인 자동화 서비스입니다.
+
+## 문서 목록
+
+| 문서 | 설명 |
+|------|------|
+| [서비스 기획서](./01_service_overview.md) | 프로젝트 개요, 핵심 기능, 요구사항 정의 |
+| [시스템 아키텍처](./02_architecture.md) | 전체 시스템 구조, 기술 스택, 서비스 간 통신 |
+| [ERD](./back/03_erd.md) | 데이터베이스 스키마 설계 |
+| [API 명세서](./back/04_api_spec.md) | REST API 엔드포인트 정의 |
+
+## 프로젝트 구조
+
+```
+S14P31F104/
+├── front/     # React 프론트엔드
+├── back/      # Node.js + TypeScript + Express 백엔드
+└── ai/        # Python AI 서버 (Redis Worker)
+```
+
+## 팀 구성
+
+| 역할 | 인원 | 기술 스택 |
+|------|------|-----------|
+| 프론트엔드 | 2명 | React |
+| 백엔드 | 2명 | Node.js, TypeScript, Express, PostgreSQL |
+| AI | 2명 | Python |
+
+---
 
 # Commit Convention
 
