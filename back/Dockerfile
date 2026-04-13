@@ -6,6 +6,7 @@ COPY package*.json ./
 RUN npm ci
 
 COPY tsconfig.json ./
+COPY openapi.yaml ./
 COPY src ./src
 RUN npm run build
 
@@ -17,6 +18,7 @@ COPY package*.json ./
 RUN npm ci --omit=dev
 
 COPY --from=build /app/dist ./dist
+COPY openapi.yaml ./
 
 EXPOSE 3000
 
