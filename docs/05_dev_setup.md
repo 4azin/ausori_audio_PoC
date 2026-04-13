@@ -4,10 +4,11 @@
 
 | 도구 | 버전 | 확인 명령어 |
 |------|------|------------|
-| Node.js | 20.x 이상 | `node -v` |
+| Node.js | 22.x (LTS) | `node -v` |
 | npm | 10.x 이상 | `npm -v` |
 | Python | 3.11 이상 | `python --version` |
-| PostgreSQL | 15 이상 | `psql --version` |
+| Docker | 최신 | `docker --version` |
+| Docker Compose | 최신 | `docker compose version` |
 | Git | 최신 | `git --version` |
 
 ---
@@ -21,7 +22,18 @@ cd S14P31F104
 
 ---
 
-## 2. 백엔드 설정
+## 2. Docker로 인프라 실행
+
+```bash
+cd back
+docker compose up -d
+```
+
+Redis, PostgreSQL 등 인프라 서비스가 실행됩니다.
+
+---
+
+## 3. 백엔드 설정
 
 ```bash
 cd back
@@ -36,32 +48,30 @@ npm install
 PORT=3000
 NODE_ENV=development
 
-# 데이터베이스
-DATABASE_URL=postgresql://postgres:password@localhost:5432/sounddesign_dev
+# Redis
+REDIS_HOST=localhost
+REDIS_PORT=6379
 
-# JWT
-JWT_ACCESS_SECRET=your_access_secret_here
-JWT_REFRESH_SECRET=your_refresh_secret_here
-JWT_ACCESS_EXPIRES_IN=15m
-JWT_REFRESH_EXPIRES_IN=7d
+# 세션
+SESSION_SECRET=your_session_secret_here
+
+# 데이터베이스
+DB_HOST=localhost
+DB_PORT=5432
+DB_NAME=sounddesign_dev
+DB_USER=postgres
+DB_PASSWORD=postgres
 
 # Google OAuth
 GOOGLE_CLIENT_ID=your_google_client_id
 GOOGLE_CLIENT_SECRET=your_google_client_secret
 GOOGLE_REDIRECT_URI=http://localhost:3000/api/auth/google/callback
 
-# AI 서버
-AI_SERVER_URL=http://localhost:8000
-
-# 파일 스토리지 (미정, 로컬 임시 경로)
-UPLOAD_DIR=./uploads
-```
-
-### 데이터베이스 생성
-```bash
-psql -U postgres
-CREATE DATABASE sounddesign_dev;
-\q
+# AWS S3
+AWS_REGION=ap-northeast-2
+AWS_ACCESS_KEY_ID=your_access_key
+AWS_SECRET_ACCESS_KEY=your_secret_key
+S3_BUCKET=your_bucket_name
 ```
 
 ### 서버 실행
@@ -76,7 +86,7 @@ npm start
 
 ---
 
-## 3. 프론트엔드 설정
+## 4. 프론트엔드 설정
 
 ```bash
 cd front
@@ -98,7 +108,7 @@ npm run dev
 
 ---
 
-## 4. AI 서버 설정
+## 5. AI 서버 설정
 
 ```bash
 cd ai
@@ -117,48 +127,54 @@ pip install -r requirements.txt
 `ai/.env` 파일 생성:
 
 ```env
-PORT=8000
-BACKEND_CALLBACK_URL=http://localhost:3000/api/internal/analyze/callback
+# Redis (작업 큐)
+REDIS_HOST=localhost
+REDIS_PORT=6379
+
+# AWS S3 (영상 다운로드)
+AWS_REGION=ap-northeast-2
+AWS_ACCESS_KEY_ID=your_access_key
+AWS_SECRET_ACCESS_KEY=your_secret_key
+S3_BUCKET=your_bucket_name
 ```
 
 ### 실행
 ```bash
-# FastAPI 예정
-uvicorn main:app --reload --port 8000
+# Redis 워커로 실행
+python worker.py
 ```
 
 ---
 
-## 5. 전체 실행 순서
+## 6. 전체 실행 순서
 
 ```
-1. PostgreSQL 서버 실행
-2. cd back && npm run dev     (포트 3000)
-3. cd ai && uvicorn ...       (포트 8000)
-4. cd front && npm run dev    (포트 5173)
+1. docker compose up -d         (Redis + PostgreSQL)
+2. cd back && npm run dev       (포트 3000)
+3. cd ai && python worker.py    (Redis 워커)
+4. cd front && npm run dev      (포트 5173)
 ```
 
 ---
 
-## 6. 브랜치 전략
+## 7. 브랜치 전략
 
 ```
 master        ── 배포 브랜치 (직접 push 금지)
-  └── develop ── 통합 브랜치
-        ├── feature/back/기능명   ── 백엔드 기능 개발
-        ├── feature/front/기능명  ── 프론트엔드 기능 개발
-        └── feature/ai/기능명     ── AI 기능 개발
+  ├── front   ── 프론트엔드 통합 브랜치
+  ├── back    ── 백엔드 통합 브랜치
+  └── ai      ── AI 통합 브랜치
 ```
 
 ### 브랜치 네이밍 예시
 - `feature/back/auth-google-oauth`
 - `feature/front/editor-timeline`
 - `feature/ai/video-scene-analysis`
-- `fix/back/jwt-refresh-token`
+- `fix/back/session-expire`
 
 ---
 
-## 7. 커밋 컨벤션
+## 8. 커밋 컨벤션
 
 프로젝트 루트 `README.md` 참고.
 
