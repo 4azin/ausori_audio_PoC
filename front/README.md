@@ -1,6 +1,4 @@
-
-
-# Commit Convention
+hi# Commit Convention
 
 ## 커밋 메시지 구조
 
