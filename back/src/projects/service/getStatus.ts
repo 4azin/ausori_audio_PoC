@@ -1,15 +1,17 @@
-import { projectModel } from "../../models";
+import { projectModel, projectSnapshotModel } from "../../models";
 import { jobRepository } from "../../jobs";
 import { notFoundError } from "../../middleware/customError";
 
-/** 프로젝트 AI 분석 진행 상태 조회 — Redis progress를 읽어 반환 */
+/** 프로젝트 AI 분석 진행 상태 조회 — Redis progress + 최신 스냅샷 버전 포함 */
 export async function getStatus(projectId: number, userId: number) {
   const project = await projectModel.findById(projectId);
 
   if (!project) throw notFoundError("프로젝트를 찾을 수 없습니다");
   if (project.userId !== userId) throw notFoundError("프로젝트를 찾을 수 없습니다");
 
-  // 분석 완료 후 DB에 반영된 상태이면 그대로 반환
+  const latest = await projectSnapshotModel.findLatest(projectId);
+  const snapshotVersion = latest?.version ?? 0;
+
   if (project.status === "ready") {
     return {
       projectId,
@@ -17,6 +19,7 @@ export async function getStatus(projectId: number, userId: number) {
       status: "ready",
       currentStage: "done",
       progress: 100,
+      snapshotVersion,
       updatedAt: project.updatedAt.toISOString(),
     };
   }
@@ -29,6 +32,7 @@ export async function getStatus(projectId: number, userId: number) {
       status: project.status,
       currentStage: "pending",
       progress: 0,
+      snapshotVersion,
       updatedAt: project.updatedAt.toISOString(),
     };
   }
@@ -41,6 +45,7 @@ export async function getStatus(projectId: number, userId: number) {
       status: project.status,
       currentStage: "pending",
       progress: 0,
+      snapshotVersion,
       updatedAt: project.updatedAt.toISOString(),
     };
   }
@@ -51,6 +56,7 @@ export async function getStatus(projectId: number, userId: number) {
     status: progress.status,
     currentStage: progress.currentStage ?? progress.status,
     progress: progress.progress,
+    snapshotVersion,
     updatedAt: progress.updatedAt ?? new Date().toISOString(),
   };
 }
