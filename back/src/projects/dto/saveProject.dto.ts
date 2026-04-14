@@ -2,7 +2,7 @@ import { z } from "zod/v4";
 
 /** 트랙 그룹 저장 스키마 */
 const trackGroupSchema = z.object({
-  type: z.enum(["dialogue", "music", "background", "foley", "sfx", "cinematic"]),
+  type: z.enum(["ambience", "cinematic", "dialogue_vo", "foley", "sfx", "music"]),
   volume: z.number().int().min(0).max(100),
   isMuted: z.boolean(),
   isSolo: z.boolean(),

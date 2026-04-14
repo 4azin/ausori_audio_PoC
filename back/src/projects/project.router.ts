@@ -13,6 +13,7 @@ import {
   saveProject,
   loadProject,
   uploadVideo,
+  getStatus,
 } from "./controller";
 
 /** Project 라우터 — URL과 핸들러 매핑만 담당 */
@@ -57,6 +58,11 @@ router.get("/:id/load",
 router.post("/:id/video",
     upload({ allow: "video", maxSize: 500_000_000 }),
     uploadVideo
+);
+
+/** AI 분석 진행 상태 조회 (폴링용) */
+router.get("/:id/status",
+    getStatus
 );
 
 export default router;
