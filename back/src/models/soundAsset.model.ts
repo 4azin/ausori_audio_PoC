@@ -7,6 +7,18 @@ const PLAYBACK_COLUMNS = `
   sample_rate AS "sampleRate", file_size AS "fileSize"
 `;
 
+export interface VectorSearchFilter {
+  majorId: number;
+  midId: number;
+  subId?: number;
+}
+
+export interface VectorSearchHit {
+  id: number;
+  duration: number;
+  similarity: number;
+}
+
 export const soundAssetModel = {
   /** id 목록으로 재생용 메타 일괄 조회 (loadProject의 soundAssets 맵 구성용) */
   async findPlaybackByIds(ids: number[]): Promise<SoundAsset[]> {
@@ -16,5 +28,17 @@ export const soundAssetModel = {
       [ids],
     );
     return res.rows;
+  },
+
+  /**
+   * 카테고리 필터 + 코사인 유사도 top-k.
+   * TODO: pgvector 쿼리 문자열 포맷 (`[0.1,0.2,...]`) 변환 헬퍼 필요.
+   */
+  async vectorSearch(
+    _filter: VectorSearchFilter,
+    _queryVec: number[],
+    _k = 1,
+  ): Promise<VectorSearchHit[]> {
+    throw new Error("[soundAsset.vectorSearch] not implemented");
   },
 };
