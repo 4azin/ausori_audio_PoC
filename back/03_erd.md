@@ -112,6 +112,8 @@ erDiagram
         text[] instruments "음악만"
         float duration
         string format "mp3 | ogg | wav"
+        int channels "1=mono, 2=stereo"
+        int sample_rate "Hz (44100, 48000 등)"
         int file_size "bytes"
         int download_count "사용 횟수"
         vector embedding "vector(3072) Gemini 임베딩"
@@ -271,6 +273,8 @@ erDiagram
 | instruments | TEXT[] | 악기 목록 (음악만) |
 | duration | FLOAT | 효과음 길이 (초) |
 | format | VARCHAR | 파일 포맷 (mp3, ogg, wav) |
+| channels | INT | 채널 수 (1=mono, 2=stereo) |
+| sample_rate | INT | 샘플레이트 (Hz, 44100/48000 등) |
 | file_size | INT | 파일 크기 (bytes) |
 | download_count | INT | 사용 횟수 |
 | embedding | VECTOR(3072) | Gemini 임베딩 벡터 |
