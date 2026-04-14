@@ -8,3 +8,4 @@ export { trackModel } from "./track.model";
 export { Track } from "./track.types";
 export { trackEventModel } from "./trackEvent.model";
 export { TrackEvent } from "./trackEvent.types";
+export { SoundAsset } from "./soundAsset.types";

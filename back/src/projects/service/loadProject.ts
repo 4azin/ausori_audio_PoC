@@ -17,5 +17,12 @@ export async function loadProject(projectId: number, userId: number) {
   const tracks = await trackModel.findAllByProjectId(projectId);
   const trackEvents = await trackEventModel.findAllByProjectId(projectId);
 
-  return { project, trackGroups, tracks, trackEvents };
+  // TODO: trackEvents.soundAssetId 기반으로 sound_assets 조회하여 soundAssets 맵 구성
+  return {
+    project,
+    trackGroups,
+    tracks,
+    trackEvents,
+    soundAssets: {},
+  };
 }

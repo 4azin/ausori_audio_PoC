@@ -33,7 +33,7 @@ erDiagram
     track_groups {
         uuid id PK
         uuid project_id FK
-        enum type "dialogue | music | background | foley | sfx | cinematic"
+        enum type "ambience | cinematic | dialogue_vo | foley | sfx | music"
         int volume "0~100"
         boolean is_muted
         boolean is_solo
@@ -185,7 +185,7 @@ erDiagram
 |------|------|------|
 | id | UUID | PK |
 | project_id | UUID | FK → projects |
-| type | ENUM | dialogue / music / background / foley / sfx / cinematic |
+| type | ENUM | ambience / cinematic / dialogue_vo / foley / sfx / music |
 | volume | INT | 그룹 전체 볼륨 (0 ~ 100) |
 | is_muted | BOOLEAN | 그룹 뮤트 상태 |
 | is_solo | BOOLEAN | 그룹 솔로 상태 |

@@ -4,6 +4,7 @@ import { validate } from "../middleware/validate";
 import { isAuthenticated } from "../middleware/auth";
 import { upload } from "../middleware/upload";
 import { createProjectDto, updateProjectDto, saveProjectDto } from "./dto";
+import { mockRouter } from "./mocks";
 import {
   getProjects,
   getProjectById,
@@ -13,10 +14,16 @@ import {
   saveProject,
   loadProject,
   uploadVideo,
+  getStatus,
 } from "./controller";
 
 /** Project 라우터 — URL과 핸들러 매핑만 담당 */
 const router = Router();
+
+/** 프론트 개발용: MOCK_STATUS=true면 특정 경로를 인증 없이 목 라우터로 처리 */
+if (process.env.MOCK_STATUS === "true") {
+  router.use(mockRouter);
+}
 
 /** 프로젝트 API는 로그인 필수 */
 router.use(isAuthenticated);
@@ -57,6 +64,11 @@ router.get("/:id/load",
 router.post("/:id/video",
     upload({ allow: "video", maxSize: 500_000_000 }),
     uploadVideo
+);
+
+/** AI 분석 진행 상태 조회 (폴링용) */
+router.get("/:id/status",
+    getStatus
 );
 
 export default router;

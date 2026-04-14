@@ -4,6 +4,7 @@ import session from "express-session";
 import { connectRedis } from "./config/redis";
 import { sessionConfig } from "./config/session";
 import { errorHandler } from "./middleware/errorHandler";
+import { responseWrapper } from "./middleware/responseWrapper";
 import userRouter from "./users/user.router";
 import projectRouter from "./projects/project.router";
 
@@ -15,6 +16,9 @@ app.use(express.json());
 
 /** 세션 미들웨어 (Redis 스토어) */
 app.use(session(sessionConfig));
+
+/** 성공 응답 래퍼 — {success, data} 포맷으로 자동 감싸기 */
+app.use(responseWrapper);
 
 /** 헬스체크 엔드포인트 */
 app.get("/health", (_req, res) => {
