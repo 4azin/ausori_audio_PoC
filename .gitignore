@@ -46,3 +46,5 @@ docker-compose.override.yml
 coverage/
 *.lcov
 .nyc_output/
+
+ai/output/
