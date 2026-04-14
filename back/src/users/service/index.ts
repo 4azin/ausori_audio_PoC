@@ -1,5 +1,5 @@
-export { getUsers } from "./getUsers";
-export { getUserById } from "./getUserById";
-export { createUser } from "./createUser";
-export { updateUser } from "./updateUser";
-export { deleteUser } from "./deleteUser";
+export { googleLogin } from "./googleLogin";
+export { logout } from "./logout";
+export { getMe } from "./getMe";
+export { updateMe } from "./updateMe";
+export { deleteMe } from "./deleteMe";
