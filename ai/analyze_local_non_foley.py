@@ -26,7 +26,8 @@ GOOGLE_API_KEY = os.getenv("GOOGLE_API_KEY", "")
 GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-3.1-pro-preview")
 
 PROMPT = """\
-당신은 영상 scene을 분석하여, 해당 scene에 어울리는 Non-Foley 사운드 트랙 배치를 결정하는 사운드 디자이너다.
+당신은 영상 scene을 분석하여, 해당 scene에 어울리는 Non-Foley 사운드 트랙 배치를 결정하는 전문 사운드 디자이너다.
+단순히 카테고리를 고르는 것이 아니라, 실제 사운드 에디터가 작업 지시서를 쓰듯 구체적으로 서술하라.
 
 [입력]
 입력으로는 2가지가 주어진다.
@@ -37,11 +38,11 @@ PROMPT = """\
 아래 5개 트랙에 대해 각각 배치 여부와 구간을 결정하라.
 트랙 간 겹침은 허용된다. 동시에 여러 트랙이 존재할 수 있다.
 
-1. ambience  — 공간 배경음. 장소/환경에서 자연스럽게 깔리는 소리.
-2. music     — BGM, 스코어, 징글 등.
-3. cinematic — 라이저, 히트, 우쉬, 드론, 트랜지션 등 연출용 효과.
-4. sfx       — 맥락형 효과음. 군중 소리, 먼 차량, 공간 강조 효과 등.
-               (Foley처럼 정밀한 행위성 소리는 제외)
+1. ambience    — 공간 배경음. 장소/환경에서 자연스럽게 깔리는 소리.
+2. music       — BGM, 스코어, 징글 등.
+3. cinematic   — 라이저, 히트, 우쉬, 드론, 트랜지션 등 연출용 효과.
+4. sfx         — 맥락형 효과음. 군중 소리, 먼 차량, 공간 강조 효과 등.
+                 (Foley처럼 정밀한 행위성 소리는 제외)
 5. dialogue_vo — 대화, 나레이션, 보이스오버 제안.
 
 [목표]
@@ -73,8 +74,31 @@ PROMPT = """\
 - 0.35 미만: 권장하지 않지만 가능성은 있음
 
 [description 규칙]
-- 짧고 구체적으로 쓴다.
-- 어떤 소리가 왜 이 장면에 어울리는지 드러나야 한다.
+- 어떤 소리인지, 왜 이 장면에 어울리는지, 어떤 질감/분위기인지 구체적으로 서술한다.
+- 단순히 "카페 배경음"처럼 짧게 끝내지 말고, 실제 소리의 성격까지 묘사하라.
+- 예시:
+  - 나쁨: "카페 실내 배경음"
+  - 좋음: "카페 내부의 낮은 웅성거림과 가벼운 컵 소리가 섞인 생활감 있는 배경음. 조용하고 아늑한 분위기를 강조."
+  - 나쁨: "로파이 BGM"
+  - 좋음: "느슨한 드럼 루프와 따뜻한 피아노 코드 위주의 로파이. 편안하고 일상적인 감성을 강조하며 영상 전체를 부드럽게 감싸는 역할."
+
+[mood 규칙]
+- mood는 이 소리가 만들어내는 감정/분위기 키워드 1~3개다.
+- 예: ["밝음", "경쾌함"], ["긴장감", "서늘함"], ["따뜻함", "아늑함"]
+
+[energy 규칙]
+- energy는 소리의 에너지 레벨이다.
+- 반드시 "low" / "medium" / "high" 중 하나만 선택한다.
+- low: 잔잔하고 배경에 깔리는 소리
+- medium: 존재감이 있으나 압도적이지 않은 소리
+- high: 강렬하고 전면에 드러나는 소리
+
+[texture 규칙]
+- texture는 소리의 시간적 성격이다.
+- 반드시 "continuous" / "periodic" / "one_shot" 중 하나만 선택한다.
+- continuous: 끊임없이 이어지는 소리 (ambience, drone 등)
+- periodic: 일정 패턴으로 반복되는 소리 (BGM 루프, 리듬 등)
+- one_shot: 한 번 터지고 끝나는 소리 (hit, whoosh, 스팅어 등)
 
 [출력 규칙]
 - 반드시 JSON만 출력한다.
@@ -92,7 +116,10 @@ PROMPT = """\
       "start_time": 0.0,
       "end_time": 19.0,
       "category_path": ["Ambience", "Interior", "Cafe"],
-      "description": "카페 실내의 잔잔한 배경 생활음",
+      "description": "카페 내부의 낮은 웅성거림과 가벼운 컵 소리가 섞인 배경음. 아늑하고 생활감 있는 공간감을 만들어줌.",
+      "mood": ["아늑함", "일상적"],
+      "energy": "low",
+      "texture": "continuous",
       "confidence": 0.91
     },
     {
@@ -100,7 +127,10 @@ PROMPT = """\
       "start_time": 0.0,
       "end_time": 19.0,
       "category_path": ["Music", "BGM", "Lo_fi"],
-      "description": "밝고 경쾌한 분위기의 로파이 BGM",
+      "description": "느슨한 드럼 루프와 따뜻한 피아노 코드 위주의 로파이 BGM. 편안하고 일상적인 감성을 강조하며 영상 전체를 부드럽게 감쌈.",
+      "mood": ["따뜻함", "경쾌함"],
+      "energy": "low",
+      "texture": "periodic",
       "confidence": 0.76
     },
     {
@@ -108,7 +138,10 @@ PROMPT = """\
       "start_time": 17.5,
       "end_time": 19.0,
       "category_path": ["Cinematic", "Transition", "Swoosh"],
-      "description": "장면 전환 직전 짧은 우쉬 효과",
+      "description": "장면 전환 직전 빠르게 스쳐 지나가는 우쉬 효과. 다음 장면으로의 전환을 청각적으로 강조.",
+      "mood": ["전환감", "역동적"],
+      "energy": "medium",
+      "texture": "one_shot",
       "confidence": 0.62
     }
   ]
@@ -260,8 +293,8 @@ def analyze_scene(
 def analyze_all(
     video_path: str,
     result_json_path: str,
-    fps: float = 1.0,
-    max_frames: int = 20,
+    fps: float = 2.0,
+    max_frames: int = 30,
 ) -> dict:
     if not GOOGLE_API_KEY:
         raise EnvironmentError("GOOGLE_API_KEY가 설정되지 않았습니다. .env 파일을 확인하세요.")
@@ -303,8 +336,8 @@ def main() -> None:
     parser = argparse.ArgumentParser(description="scene별 Non-Foley 트랙 배치 분석 (Gemini)")
     parser.add_argument("video", help="원본 영상 파일 경로")
     parser.add_argument("--result", required=True, help="글로벌 분석 결과 JSON 경로 (result.json)")
-    parser.add_argument("--fps", type=float, default=1.0, help="프레임 추출 fps (기본: 1.0)")
-    parser.add_argument("--max-frames", type=int, default=20, help="scene당 최대 프레임 수 (기본: 20)")
+    parser.add_argument("--fps", type=float, default=2.0, help="프레임 추출 fps (기본: 2.0)")
+    parser.add_argument("--max-frames", type=int, default=60, help="scene당 최대 프레임 수 (기본: 30)")
     parser.add_argument("--out", help="결과를 저장할 JSON 파일 경로 (생략 시 stdout 출력)")
     args = parser.parse_args()
 
