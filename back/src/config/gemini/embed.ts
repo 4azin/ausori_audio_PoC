@@ -1,12 +1,19 @@
-import { getGeminiClient } from "./client";
+import { EmbedTask, getGeminiClient } from "./client";
 
-/** 장면 설명 텍스트 → 3072차원 임베딩 벡터 */
-export async function embedText(text: string): Promise<number[]> {
-  const client = getGeminiClient();
-  return client.embedContent(text);
+/** 장면 설명 → query 임베딩 (검색 시 사용) */
+export async function embedQuery(text: string): Promise<number[]> {
+  return getGeminiClient().embedOne(text, "query");
 }
 
-/** 배치 임베딩 — 병렬 호출 (rate limit은 client 레이어에서 처리) */
-export async function embedTexts(texts: string[]): Promise<number[][]> {
-  return Promise.all(texts.map(embedText));
+/** 에셋 메타 텍스트 → document 임베딩 (색인 시 사용) */
+export async function embedDocument(text: string): Promise<number[]> {
+  return getGeminiClient().embedOne(text, "document");
+}
+
+/** 배치 — task 지정 필요. SDK가 한 번에 여러 개 지원 */
+export async function embedTexts(
+  texts: string[],
+  task: EmbedTask,
+): Promise<number[][]> {
+  return getGeminiClient().embedBatch(texts, task);
 }

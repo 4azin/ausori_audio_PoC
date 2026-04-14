@@ -2,6 +2,7 @@ import express from "express";
 import session from "express-session";
 
 import { connectRedis } from "./config/redis";
+import { initGemini } from "./config/gemini";
 import { startJobConsumer } from "./jobs";
 import { sessionConfig } from "./config/session";
 import { errorHandler } from "./middleware/errorHandler";
@@ -40,6 +41,7 @@ app.use(errorHandler);
 
 /** Redis 연결 후 서버 시작 */
 async function bootstrap() {
+  initGemini();
   await connectRedis();
   await startJobConsumer();
 
