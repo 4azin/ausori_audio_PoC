@@ -1,26 +1,13 @@
-/** 프론트 개발용 목 데이터 — 실제 AI/DB 연동 전까지 사용 */
+/** 프론트 개발용 목 데이터 빌더 — 실제 AI/DB 연동 전까지 사용 */
 
-/** 시간 경과에 따른 진행률 시뮬레이션 */
-export function buildMockStatus(projectId: number, startedAt: Date) {
-  const elapsedSec = (Date.now() - startedAt.getTime()) / 1000;
-
-  const stages = [
-    { at: 0, status: "analyzing", currentStage: "scene_splitting", progress: 10 },
-    { at: 5, status: "analyzing", currentStage: "analyzing", progress: 35 },
-    { at: 10, status: "analyzing", currentStage: "refining_timing", progress: 60 },
-    { at: 15, status: "analyzing", currentStage: "matching", progress: 80 },
-    { at: 20, status: "analyzing", currentStage: "placing", progress: 95 },
-    { at: 25, status: "ready", currentStage: "done", progress: 100 },
-  ];
-
-  const current = [...stages].reverse().find((s) => elapsedSec >= s.at) ?? stages[0];
-
+/** 분석 완료 상태 고정 반환 */
+export function buildMockStatus(projectId: number) {
   return {
     projectId,
     jobId: `mock-job-${projectId}`,
-    status: current.status,
-    currentStage: current.currentStage,
-    progress: current.progress,
+    status: "ready",
+    currentStage: "done",
+    progress: 100,
     snapshotVersion: 1,
     updatedAt: new Date().toISOString(),
   };
@@ -66,7 +53,6 @@ const TRACK_GROUP_TYPES = [
 export function buildMockSnapshot(projectId: number) {
   const now = new Date();
 
-  // 6개 대분류 그룹 항상 반환
   const trackGroups = TRACK_GROUP_TYPES.map((type, idx) => ({
     id: idx + 1,
     projectId,
@@ -85,8 +71,8 @@ export function buildMockSnapshot(projectId: number) {
       {
         id: 1,
         projectId,
-        groupId: 3, // background
-        name: "Background 1",
+        groupId: 1,
+        name: "Ambience 1",
         volume: 100,
         pan: 0,
         isMuted: false,
@@ -97,7 +83,7 @@ export function buildMockSnapshot(projectId: number) {
       {
         id: 2,
         projectId,
-        groupId: 5, // sfx
+        groupId: 5,
         name: "SFX 1",
         volume: 100,
         pan: 0,
