@@ -3,8 +3,8 @@ import { Request, Response } from "express";
 import { getUserById as getUserByIdService } from "../service";
 
 /** ID로 유저 단건 조회 */
-export async function getUserById(req: Request, res: Response) {
-  const id = Number(req.params.id);
+export async function getUserById(req: Request<{ id: string }>, res: Response) {
+  const { id } = req.params;
   
   const user = await getUserByIdService(id);
 

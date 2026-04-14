@@ -1,5 +1,3 @@
-import { v4 as uuidv4 } from "uuid";
-
 import { projectModel } from "../../models";
 import { s3Repository } from "../../config/s3";
 import { jobRepository } from "../../config/redis";
@@ -8,7 +6,7 @@ import { notFoundError, badRequestError } from "../../middleware/customError";
 /** 영상 업로드 → S3 저장 → AI 작업 큐 등록 */
 export async function uploadVideo(
   projectId: number,
-  userId: number,
+  userId: string,
   file: Express.Multer.File,
 ) {
   const project = await projectModel.findById(projectId);
@@ -21,7 +19,7 @@ export async function uploadVideo(
 
   /** S3 업로드 */
   const ext = file.originalname.split(".").pop() || "mp4";
-  const s3Key = `videos/${projectId}/${uuidv4()}.${ext}`;
+  const s3Key = `videos/${projectId}/${crypto.randomUUID()}.${ext}`;
 
   await s3Repository.upload({
     key: s3Key,
@@ -33,7 +31,7 @@ export async function uploadVideo(
   await projectModel.update(projectId, { status: "analyzing" });
 
   /** AI 작업 큐 등록 */
-  const jobId = uuidv4();
+  const jobId = crypto.randomUUID();
 
   await jobRepository.enqueue({
     job_id: jobId,

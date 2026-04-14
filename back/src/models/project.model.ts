@@ -8,7 +8,7 @@ let nextId = 1;
 export const projectModel = {
 
   /** 사용자의 전체 프로젝트 조회 */
-  async findAllByUserId(userId: number): Promise<Project[]> {
+  async findAllByUserId(userId: string): Promise<Project[]> {
     return projects.filter((p) => p.userId === userId);
   },
 
@@ -18,7 +18,7 @@ export const projectModel = {
   },
 
   /** 프로젝트 생성 */
-  async create(data: { userId: number; title: string }): Promise<Project> {
+  async create(data: { userId: string; title: string }): Promise<Project> {
     const project: Project = {
       id: nextId++,
       userId: data.userId,

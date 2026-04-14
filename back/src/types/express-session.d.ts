@@ -4,7 +4,7 @@ import "express-session";
 declare module "express-session" {
   interface SessionData {
     /** 로그인한 유저의 DB id */
-    userId: number;
+    userId: string;
     /** 로그인한 유저의 role — 권한 체크 미들웨어에서 사용 */
     userRole: "user" | "designer" | "admin";
   }
