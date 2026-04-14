@@ -393,16 +393,15 @@ Google OAuth 로그인 / 신규 회원가입
 ---
 
 ### POST /api/projects
-새 프로젝트 생성 (영상 업로드)
+새 프로젝트 생성 (메타데이터만, 영상은 별도 업로드)
 
 **인증 필요**: 로그인 상태  
-**Content-Type**: `multipart/form-data`
+**Content-Type**: `application/json`
 
 **Request Body**
-| 필드 | 타입 | 필수 | 설명 |
-|------|------|------|------|
-| video | File | ✓ | 영상 파일 (`mp4`, `mov`) |
-| title | string | | 프로젝트 제목 (기본값: 파일명) |
+```json
+{ "title": "내 첫 번째 영상" }
+```
 
 **Response 201**
 ```json
@@ -411,31 +410,73 @@ Google OAuth 로그인 / 신규 회원가입
   "data": {
     "id": "uuid",
     "title": "내 첫 번째 영상",
-    "status": "uploading",
-    "monthlyUsageCount": 2,
-    "remainingMonthlyUsage": 1,
+    "status": "created",
     "createdAt": "2026-04-13T00:00:00Z"
   }
 }
 ```
 
-**Response 429** — 무료 플랜 월간 생성 한도 초과
+---
+
+### POST /api/projects/:id/video
+프로젝트에 영상 업로드 — S3에 저장하고 AI 분석 작업을 enqueue한다.
+
+**인증 필요**: 로그인 상태 (본인 프로젝트)  
+**Content-Type**: `multipart/form-data`  
+**최대 크기**: 500MB  
+**허용 MIME**: `video/mp4`, `video/webm`, `video/quicktime`
+
+**Request Body**
+| 필드 | 타입 | 필수 | 설명 |
+|------|------|------|------|
+| file | File | ✓ | 영상 파일 |
+
+**Response 202**
 ```json
 {
-  "success": false,
-  "error": {
-    "code": "RATE_LIMIT",
-    "message": "무료 플랜은 월 3개 프로젝트까지 생성할 수 있습니다"
+  "success": true,
+  "data": {
+    "projectId": "uuid",
+    "jobId": "job_abc123",
+    "status": "analyzing",
+    "s3Key": "videos/{projectId}/{uuid}.mp4"
   }
 }
 ```
 
-프로 플랜(`plan=pro`)은 월간 프로젝트 생성 제한을 적용하지 않는다.
+업로드 완료 후 자동으로 AI 분석이 enqueue되므로 별도의 분석 요청 API는 없다. 진행 상태는 `GET /api/projects/:id/status` 폴링으로 확인한다.
 
 ---
 
 ### GET /api/projects/:id
-프로젝트 상세 조회 — 에디터 로드 시 최신 스냅샷 포함
+프로젝트 메타 정보 조회 (스냅샷 제외)
+
+**인증 필요**: 로그인 상태 (본인 프로젝트)
+
+**Response 200**
+```json
+{
+  "success": true,
+  "data": {
+    "id": "uuid",
+    "title": "내 첫 번째 영상",
+    "thumbnailUrl": "https://...",
+    "status": "ready",
+    "originalVideoUrl": "https://...",
+    "finalVideoUrl": null,
+    "durationSeconds": 120,
+    "createdAt": "2026-04-13T00:00:00Z",
+    "updatedAt": "2026-04-13T02:00:00Z"
+  }
+}
+```
+
+스냅샷 및 사운드 에셋을 포함한 에디터 로드 응답은 `GET /:id/load` 참고.
+
+---
+
+### GET /api/projects/:id/load
+에디터 로드 — 프로젝트 메타 + 최신 스냅샷(trackGroups > tracks > events 중첩) + 재생용 sound_assets 맵
 
 **인증 필요**: 로그인 상태 (본인 프로젝트)
 
@@ -456,7 +497,7 @@ Google OAuth 로그인 / 신규 회원가입
       "trackGroups": [
         {
           "id": "uuid",
-          "type": "background",
+          "type": "ambience",
           "volume": 80,
           "isMuted": false,
           "isSolo": false,
@@ -464,7 +505,7 @@ Google OAuth 로그인 / 신규 회원가입
           "tracks": [
             {
               "id": "uuid",
-              "name": "Background 1",
+              "name": "Ambience 1",
               "volume": 100,
               "pan": 0,
               "isMuted": false,
@@ -472,7 +513,7 @@ Google OAuth 로그인 / 신규 회원가입
               "events": [
                 {
                   "id": "uuid",
-                  "soundAssetId": "uuid",
+                  "soundAssetId": 101,
                   "startTime": 0.0,
                   "endTime": 15.5,
                   "offset": 0.0,
@@ -486,10 +527,29 @@ Google OAuth 로그인 / 신규 회원가입
           ]
         }
       ]
+    },
+    "soundAssets": {
+      "101": {
+        "id": 101,
+        "fileName": "rain_ambience.mp3",
+        "s3Key": "sounds/library/rain_ambience.mp3",
+        "duration": 30.0,
+        "format": "mp3",
+        "channels": 2,
+        "sampleRate": 48000,
+        "fileSize": 480000
+      }
     }
   }
 }
 ```
+
+**`trackGroups` 반환 규칙**
+- 프로젝트 생성 시 6개 대분류 그룹(`ambience | cinematic | dialogue_vo | foley | sfx | music`)이 자동 생성된다. (분류 체계는 `ai/taxonomy.json` 기준)
+- 응답의 `trackGroups`는 **항상 6개가 순서대로 포함**된다 (`order` 기준 정렬).
+
+**`soundAssets` 맵**
+- 현재 스냅샷에서 참조되는 `soundAssetId`에 해당하는 재생 메타데이터를 key-value 형태로 inline 반환해 N+1 요청을 방지한다.
 
 ---
 
@@ -519,7 +579,7 @@ Google OAuth 로그인 / 신규 회원가입
 }
 ```
 
-분석 또는 렌더가 끝나면 `status`는 각각 `ready`, `done`으로 반영되고 `progress`는 `100`이 된다.
+분석이 끝나면 `status`는 `ready`, `progress`는 `100`이 된다.
 
 ---
 
@@ -552,51 +612,8 @@ Google OAuth 로그인 / 신규 회원가입
 
 ---
 
-### POST /api/projects/:id/analyze
-AI 분석 요청 — 업로드 완료 후 비동기 작업 enqueue
-
-**인증 필요**: 로그인 상태 (본인 프로젝트)
-
-**Response 202**
-```json
-{
-  "success": true,
-  "data": {
-    "projectId": "uuid",
-    "jobId": "job_abc123",
-    "status": "analyzing",
-    "currentStage": "pending",
-    "progress": 0
-  }
-}
-```
-
-클라이언트는 이후 `GET /api/projects/:id/status`를 polling하여 진행률을 조회한다.
-
----
-
-### POST /api/projects/:id/render
-최종 영상 렌더링 요청 — 비동기 작업 enqueue
-
-**인증 필요**: 로그인 상태 (본인 프로젝트)
-
-**Response 202**
-```json
-{
-  "success": true,
-  "data": {
-    "projectId": "uuid",
-    "jobId": "job_render_abc123",
-    "status": "rendering",
-    "progress": 0
-  }
-}
-```
-
----
-
-### POST /api/projects/:id/snapshots
-에디터 저장 — 현재 전체 상태를 스냅샷으로 저장
+### POST /api/projects/:id/save
+에디터 저장 — 현재 전체 상태를 스냅샷으로 저장하고 새 버전을 발급한다. trackGroups/tracks/trackEvents는 index 기반 참조(`groupIndex`, `trackIndex`)로 전달한다.
 
 **인증 필요**: 로그인 상태 (본인 프로젝트)
 
@@ -605,38 +622,40 @@ AI 분석 요청 — 업로드 완료 후 비동기 작업 enqueue
 {
   "trackGroups": [
     {
-      "id": "uuid",
-      "type": "background",
+      "type": "ambience",
       "volume": 80,
       "isMuted": false,
       "isSolo": false,
-      "order": 1,
-      "tracks": [
-        {
-          "id": "uuid",
-          "name": "Background 1",
-          "volume": 100,
-          "pan": 0,
-          "isMuted": false,
-          "order": 1,
-          "events": [
-            {
-              "soundAssetId": "uuid",
-              "startTime": 0.0,
-              "endTime": 15.5,
-              "offset": 0.0,
-              "volumeOverride": 80,
-              "fadeIn": 0.5,
-              "fadeOut": 1.0,
-              "isUserEdited": true
-            }
-          ]
-        }
-      ]
+      "order": 1
+    }
+  ],
+  "tracks": [
+    {
+      "groupIndex": 0,
+      "name": "Ambience 1",
+      "volume": 100,
+      "pan": 0,
+      "isMuted": false,
+      "order": 1
+    }
+  ],
+  "trackEvents": [
+    {
+      "trackIndex": 0,
+      "soundAssetId": 101,
+      "startTime": 0.0,
+      "endTime": 15.5,
+      "offset": 0.0,
+      "volumeOverride": 80,
+      "fadeIn": 0.5,
+      "fadeOut": 1.0,
+      "isUserEdited": true
     }
   ]
 }
 ```
+
+`type`은 `ambience | cinematic | dialogue_vo | foley | sfx | music` 중 하나.
 
 **Response 201**
 ```json
@@ -873,10 +892,10 @@ AI가 자동 생성한 이벤트는 `isUserEdited: false`로 저장한다.
   "snapshot": {
     "trackGroups": [
       {
-        "type": "background",
+        "type": "ambience",
         "tracks": [
           {
-            "name": "Background 1",
+            "name": "Ambience 1",
             "events": [
               {
                 "soundAssetId": "uuid",
