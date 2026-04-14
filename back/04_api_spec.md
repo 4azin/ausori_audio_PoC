@@ -78,7 +78,7 @@ Google OAuth 로그인 / 신규 회원가입
 {
   "success": true,
   "data": {
-    "id": "uuid",
+    "id": 1,
     "email": "user@gmail.com",
     "name": "홍길동",
     "profileImageUrl": "https://...",
@@ -112,7 +112,7 @@ Google OAuth 로그인 / 신규 회원가입
 {
   "success": true,
   "data": {
-    "id": "uuid",
+    "id": 1,
     "email": "user@gmail.com",
     "name": "홍길동",
     "profileImageUrl": "https://...",
@@ -143,7 +143,7 @@ Google OAuth 로그인 / 신규 회원가입
 
 **Response 200**
 ```json
-{ "success": true, "data": { "id": "uuid", "name": "새 닉네임" } }
+{ "success": true, "data": { "id": 1, "name": "새 닉네임" } }
 ```
 
 ---
@@ -180,8 +180,8 @@ Google OAuth 로그인 / 신규 회원가입
 {
   "success": true,
   "data": {
-    "id": "uuid",
-    "userId": "uuid",
+    "id": 1,
+    "userId": 1,
     "displayName": "Sound Studio A",
     "bio": "...",
     "revenueShareRate": 0.7,
@@ -210,7 +210,7 @@ Google OAuth 로그인 / 신규 회원가입
 {
   "success": true,
   "data": {
-    "id": "uuid",
+    "id": 1,
     "displayName": "Sound Studio A",
     "bio": "...",
     "revenueShareRate": 0.7,
@@ -237,7 +237,7 @@ Google OAuth 로그인 / 신규 회원가입
 
 **Response 200**
 ```json
-{ "success": true, "data": { "id": "uuid", "displayName": "New Studio Name", "bio": "새 소개글" } }
+{ "success": true, "data": { "id": 1, "displayName": "New Studio Name", "bio": "새 소개글" } }
 ```
 
 ---
@@ -260,7 +260,7 @@ Google OAuth 로그인 / 신규 회원가입
   "data": {
     "sounds": [
       {
-        "id": "uuid",
+        "id": 1,
         "fileName": "rain_heavy_01.wav",
         "category": { "major": "ambience", "mid": "weather", "sub": "rain" },
         "duration": 30.5,
@@ -303,7 +303,7 @@ Google OAuth 로그인 / 신규 회원가입
 {
   "success": true,
   "data": {
-    "id": "uuid",
+    "id": 1,
     "fileName": "rain_heavy_01.wav",
     "s3Key": "sounds/designer-uuid/rain_heavy_01.wav",
     "originalPath": "Pack_A/Weather/rain_heavy_01.wav",
@@ -334,7 +334,7 @@ Google OAuth 로그인 / 신규 회원가입
 
 **Response 200**
 ```json
-{ "success": true, "data": { "id": "uuid" } }
+{ "success": true, "data": { "id": 1 } }
 ```
 
 ---
@@ -374,7 +374,7 @@ Google OAuth 로그인 / 신규 회원가입
   "data": {
     "projects": [
       {
-        "id": "uuid",
+        "id": 1,
         "title": "내 첫 번째 영상",
         "thumbnailUrl": "https://...",
         "status": "ready",
@@ -408,9 +408,9 @@ Google OAuth 로그인 / 신규 회원가입
 {
   "success": true,
   "data": {
-    "id": "uuid",
+    "id": 1,
     "title": "내 첫 번째 영상",
-    "status": "created",
+    "status": "uploading",
     "createdAt": "2026-04-13T00:00:00Z"
   }
 }
@@ -436,7 +436,7 @@ Google OAuth 로그인 / 신규 회원가입
 {
   "success": true,
   "data": {
-    "projectId": "uuid",
+    "projectId": 1,
     "jobId": "job_abc123",
     "status": "analyzing",
     "s3Key": "videos/{projectId}/{uuid}.mp4"
@@ -458,12 +458,11 @@ Google OAuth 로그인 / 신규 회원가입
 {
   "success": true,
   "data": {
-    "id": "uuid",
+    "id": 1,
     "title": "내 첫 번째 영상",
     "thumbnailUrl": "https://...",
     "status": "ready",
     "originalVideoUrl": "https://...",
-    "finalVideoUrl": null,
     "durationSeconds": 120,
     "createdAt": "2026-04-13T00:00:00Z",
     "updatedAt": "2026-04-13T02:00:00Z"
@@ -485,18 +484,17 @@ Google OAuth 로그인 / 신규 회원가입
 {
   "success": true,
   "data": {
-    "id": "uuid",
+    "id": 1,
     "title": "내 첫 번째 영상",
     "thumbnailUrl": "https://...",
     "status": "ready",
     "originalVideoUrl": "https://...",
-    "finalVideoUrl": null,
     "durationSeconds": 120,
     "snapshot": {
       "version": 3,
       "trackGroups": [
         {
-          "id": "uuid",
+          "id": 1,
           "type": "ambience",
           "volume": 80,
           "isMuted": false,
@@ -504,15 +502,16 @@ Google OAuth 로그인 / 신규 회원가입
           "order": 1,
           "tracks": [
             {
-              "id": "uuid",
+              "id": 1,
               "name": "Ambience 1",
               "volume": 100,
               "pan": 0,
               "isMuted": false,
+              "isSolo": false,
               "order": 1,
               "events": [
                 {
-                  "id": "uuid",
+                  "id": 1,
                   "soundAssetId": 101,
                   "startTime": 0.0,
                   "endTime": 15.5,
@@ -568,7 +567,7 @@ Google OAuth 로그인 / 신규 회원가입
 {
   "success": true,
   "data": {
-    "projectId": "uuid",
+    "projectId": 1,
     "jobId": "job_abc123",
     "status": "analyzing",
     "currentStage": "matching",
@@ -595,7 +594,7 @@ Google OAuth 로그인 / 신규 회원가입
 
 **Response 200**
 ```json
-{ "success": true, "data": { "id": "uuid", "title": "새 제목" } }
+{ "success": true, "data": { "id": 1, "title": "새 제목" } }
 ```
 
 ---
@@ -636,6 +635,7 @@ Google OAuth 로그인 / 신규 회원가입
       "volume": 100,
       "pan": 0,
       "isMuted": false,
+      "isSolo": false,
       "order": 1
     }
   ],
@@ -661,7 +661,7 @@ Google OAuth 로그인 / 신규 회원가입
 ```json
 {
   "success": true,
-  "data": { "id": "uuid", "version": 4, "createdAt": "2026-04-13T02:00:00Z" }
+  "data": { "id": 1, "version": 4, "createdAt": "2026-04-13T02:00:00Z" }
 }
 ```
 
@@ -678,8 +678,8 @@ Google OAuth 로그인 / 신규 회원가입
   "success": true,
   "data": {
     "snapshots": [
-      { "id": "uuid", "version": 3, "createdAt": "2026-04-13T01:00:00Z" },
-      { "id": "uuid", "version": 2, "createdAt": "2026-04-13T00:30:00Z" }
+      { "id": 1, "version": 3, "createdAt": "2026-04-13T01:00:00Z" },
+      { "id": 1, "version": 2, "createdAt": "2026-04-13T00:30:00Z" }
     ]
   }
 }
@@ -694,7 +694,7 @@ Google OAuth 로그인 / 신규 회원가입
 
 **Response 200**
 ```json
-{ "success": true, "data": { "projectId": "uuid", "restoredVersion": 2 } }
+{ "success": true, "data": { "projectId": 1, "restoredVersion": 2 } }
 ```
 
 복원된 스냅샷에도 각 이벤트의 `isUserEdited` 값은 유지되어야 한다.
@@ -726,7 +726,7 @@ Google OAuth 로그인 / 신규 회원가입
   "data": {
     "sounds": [
       {
-        "id": "uuid",
+        "id": 1,
         "fileName": "rain_heavy_01.wav",
         "category": { "major": "ambience", "mid": "weather", "sub": "rain" },
         "mood": ["calm", "dark"],
@@ -757,15 +757,15 @@ Google OAuth 로그인 / 신규 회원가입
   "success": true,
   "data": [
     {
-      "id": "uuid",
+      "id": 1,
       "name": "ambience",
       "children": [
         {
-          "id": "uuid",
+          "id": 1,
           "name": "weather",
           "children": [
-            { "id": "uuid", "name": "rain" },
-            { "id": "uuid", "name": "thunder" }
+            { "id": 1, "name": "rain" },
+            { "id": 1, "name": "thunder" }
           ]
         }
       ]
@@ -786,7 +786,7 @@ Google OAuth 로그인 / 신규 회원가입
 {
   "success": true,
   "data": {
-    "id": "uuid",
+    "id": 1,
     "fileName": "rain_heavy_01.wav",
     "category": { "major": "ambience", "mid": "weather", "sub": "rain" },
     "mood": ["calm", "peaceful"],
@@ -796,7 +796,7 @@ Google OAuth 로그인 / 신규 회원가입
     "format": "wav",
     "fileSize": 1234567,
     "downloadCount": 120,
-    "designer": { "id": "uuid", "displayName": "Sound Studio A" }
+    "designer": { "id": 1, "displayName": "Sound Studio A" }
   }
 }
 ```
@@ -831,7 +831,7 @@ Google OAuth 로그인 / 신규 회원가입
   "success": true,
   "data": {
     "designer": {
-      "id": "uuid",
+      "id": 1,
       "displayName": "Sound Studio A",
       "bio": "...",
       "soundCount": 42,
@@ -839,7 +839,7 @@ Google OAuth 로그인 / 신규 회원가입
     },
     "sounds": [
       {
-        "id": "uuid",
+        "id": 1,
         "fileName": "rain_heavy_01.wav",
         "format": "wav"
       }
@@ -887,7 +887,7 @@ AI가 자동 생성한 이벤트는 `isUserEdited: false`로 저장한다.
 
 ```json
 {
-  "projectId": "uuid",
+  "projectId": 1,
   "status": "ready",
   "snapshot": {
     "trackGroups": [
@@ -898,7 +898,7 @@ AI가 자동 생성한 이벤트는 `isUserEdited: false`로 저장한다.
             "name": "Ambience 1",
             "events": [
               {
-                "soundAssetId": "uuid",
+                "soundAssetId": 101,
                 "startTime": 0.0,
                 "endTime": 15.5,
                 "offset": 0.0,

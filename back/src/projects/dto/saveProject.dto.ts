@@ -16,6 +16,7 @@ const trackSchema = z.object({
   volume: z.number().int().min(0).max(100),
   pan: z.number().int().min(-100).max(100),
   isMuted: z.boolean(),
+  isSolo: z.boolean().default(false),
   order: z.number().int().min(0),
 });
 
