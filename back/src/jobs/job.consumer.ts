@@ -1,9 +1,12 @@
 import { redisClient } from "../config/redis";
+import { withTransaction } from "../config/db";
 import {
   projectModel,
   trackGroupModel,
   trackModel,
   trackEventModel,
+  projectSnapshotModel,
+  SnapshotPayload,
 } from "../models";
 import {
   jobRepository,
@@ -19,54 +22,108 @@ const READ_COUNT = 10;
 let running = false;
 let subscriberClient: ReturnType<typeof redisClient.duplicate> | null = null;
 
-/** AI 완료 결과를 DB에 반영 */
+/** AI 완료 결과를 DB에 반영 — 트랜잭션으로 live replace + 스냅샷 생성 */
 async function persistJobResult(payload: JobDoneMessage) {
   const { projectId, result } = payload;
 
-  // 재시도에 안전하도록 기존 스냅샷 제거 후 재삽입
-  await trackEventModel.deleteAllByProjectId(projectId);
-  await trackModel.deleteAllByProjectId(projectId);
-  await trackGroupModel.deleteAllByProjectId(projectId);
+  await withTransaction(async (client) => {
+    await trackEventModel.deleteAllByProjectId(projectId, client);
+    await trackModel.deleteAllByProjectId(projectId, client);
+    await trackGroupModel.deleteAllByProjectId(projectId, client);
 
-  const groups = await trackGroupModel.createMany(
-    projectId,
-    result.trackGroups.map((g) => ({
-      type: g.type,
-      volume: g.volume,
-      isMuted: g.isMuted,
-      isSolo: g.isSolo,
-      order: g.order,
-    })),
-  );
+    const groups = await trackGroupModel.createMany(
+      projectId,
+      result.trackGroups.map((g) => ({
+        type: g.type,
+        volume: g.volume,
+        isMuted: g.isMuted,
+        isSolo: g.isSolo,
+        order: g.order,
+      })),
+      client,
+    );
 
-  const tracks = await trackModel.createMany(
-    projectId,
-    result.tracks.map((t) => ({
-      groupId: groups[t.groupIndex].id,
-      name: t.name,
-      volume: t.volume,
-      pan: t.pan,
-      isMuted: t.isMuted,
-      order: t.order,
-    })),
-  );
+    const tracks = await trackModel.createMany(
+      projectId,
+      result.tracks.map((t) => ({
+        groupId: groups[t.groupIndex].id,
+        name: t.name,
+        volume: t.volume,
+        pan: t.pan,
+        isMuted: t.isMuted,
+        isSolo: t.isSolo ?? false,
+        order: t.order,
+      })),
+      client,
+    );
 
-  await trackEventModel.createMany(
-    projectId,
-    result.trackEvents.map((e) => ({
-      trackId: tracks[e.trackIndex].id,
-      soundAssetId: e.soundAssetId,
-      startTime: e.startTime,
-      endTime: e.endTime,
-      offset: e.offset,
-      volumeOverride: e.volumeOverride,
-      fadeIn: e.fadeIn,
-      fadeOut: e.fadeOut,
-      isUserEdited: e.isUserEdited,
-    })),
-  );
+    const events = await trackEventModel.createMany(
+      projectId,
+      result.trackEvents.map((e) => ({
+        trackId: tracks[e.trackIndex].id,
+        soundAssetId: e.soundAssetId,
+        startTime: e.startTime,
+        endTime: e.endTime,
+        offset: e.offset,
+        volumeOverride: e.volumeOverride,
+        fadeIn: e.fadeIn,
+        fadeOut: e.fadeOut,
+        isUserEdited: e.isUserEdited,
+      })),
+      client,
+    );
 
-  await projectModel.update(projectId, { status: "ready" });
+    const version = await projectSnapshotModel.nextVersion(projectId, client);
+
+    const eventsByTrack = new Map<number, typeof events>();
+    for (const e of events) {
+      const arr = eventsByTrack.get(e.trackId) ?? [];
+      arr.push(e);
+      eventsByTrack.set(e.trackId, arr);
+    }
+    const tracksByGroup = new Map<number, typeof tracks>();
+    for (const t of tracks) {
+      const arr = tracksByGroup.get(t.groupId) ?? [];
+      arr.push(t);
+      tracksByGroup.set(t.groupId, arr);
+    }
+
+    const snapshotPayload: SnapshotPayload = {
+      version,
+      trackGroups: groups.map((g) => ({
+        id: g.id,
+        type: g.type,
+        volume: g.volume,
+        isMuted: g.isMuted,
+        isSolo: g.isSolo,
+        order: g.order,
+        tracks: (tracksByGroup.get(g.id) ?? []).map((t) => ({
+          id: t.id,
+          name: t.name,
+          volume: t.volume,
+          pan: t.pan,
+          isMuted: t.isMuted,
+          isSolo: t.isSolo,
+          order: t.order,
+          events: (eventsByTrack.get(t.id) ?? []).map((e) => ({
+            id: e.id,
+            soundAssetId: e.soundAssetId,
+            startTime: e.startTime,
+            endTime: e.endTime,
+            offset: e.offset,
+            volumeOverride: e.volumeOverride,
+            fadeIn: e.fadeIn,
+            fadeOut: e.fadeOut,
+            isUserEdited: e.isUserEdited,
+          })),
+        })),
+      })),
+    };
+
+    await projectSnapshotModel.create(projectId, version, snapshotPayload, client);
+    await projectModel.update(projectId, { status: "ready" }, client);
+  });
+
   await jobRepository.cleanup(payload.jobId, projectId);
 }
 

@@ -8,4 +8,13 @@ export { trackModel } from "./track.model";
 export { Track } from "./track.types";
 export { trackEventModel } from "./trackEvent.model";
 export { TrackEvent } from "./trackEvent.types";
+export { soundAssetModel } from "./soundAsset.model";
 export { SoundAsset } from "./soundAsset.types";
+export { projectSnapshotModel } from "./projectSnapshot.model";
+export {
+  ProjectSnapshot,
+  SnapshotPayload,
+  SnapshotGroup,
+  SnapshotTrack,
+  SnapshotEvent,
+} from "./projectSnapshot.types";

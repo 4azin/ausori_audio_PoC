@@ -44,6 +44,7 @@ export interface JobDoneMessage {
       volume: number;
       pan: number;
       isMuted: boolean;
+      isSolo?: boolean;
       order: number;
     }>;
     trackEvents: Array<{
