@@ -1,6 +1,5 @@
-/** 프론트 개발용 목 데이터 빌더 — 실제 AI/DB 연동 전까지 사용 */
+/** 프론트 개발용 목 데이터 빌더 — API 명세서 포맷과 동일한 nested 구조 */
 
-/** 분석 완료 상태 고정 반환 */
 export function buildMockStatus(projectId: number) {
   return {
     projectId,
@@ -13,7 +12,6 @@ export function buildMockStatus(projectId: number) {
   };
 }
 
-/** 프로젝트에서 쓰이는 sound_assets 목 맵 (재생용 메타 포함) */
 export function buildMockSoundAssets() {
   return {
     101: {
@@ -39,7 +37,6 @@ export function buildMockSoundAssets() {
   };
 }
 
-/** 6개 대분류 트랙 그룹 — 프로젝트 생성 시 자동 생성되는 고정 그룹 */
 const TRACK_GROUP_TYPES = [
   "ambience",
   "cinematic",
@@ -49,81 +46,84 @@ const TRACK_GROUP_TYPES = [
   "music",
 ] as const;
 
-/** 에디터 초기 로드용 목 스냅샷 (AI 분석 완료 가정) */
+/** 에디터 로드용 목 스냅샷 — trackGroups > tracks > events 중첩 구조 */
 export function buildMockSnapshot(projectId: number) {
-  const now = new Date();
-
-  const trackGroups = TRACK_GROUP_TYPES.map((type, idx) => ({
-    id: idx + 1,
-    projectId,
-    type,
-    volume: 80,
-    isMuted: false,
-    isSolo: false,
-    order: idx + 1,
-    createdAt: now,
-    updatedAt: now,
-  }));
-
-  return {
-    trackGroups,
-    tracks: [
+  const tracksByGroup: Record<string, unknown[]> = {
+    ambience: [
       {
         id: 1,
-        projectId,
-        groupId: 1,
         name: "Ambience 1",
         volume: 100,
         pan: 0,
         isMuted: false,
         order: 1,
-        createdAt: now,
-        updatedAt: now,
+        events: [
+          {
+            id: 1,
+            soundAssetId: 101,
+            startTime: 0.0,
+            endTime: 15.5,
+            offset: 0.0,
+            volumeOverride: 80,
+            fadeIn: 0.5,
+            fadeOut: 1.0,
+            isUserEdited: false,
+          },
+        ],
       },
+    ],
+    sfx: [
       {
         id: 2,
-        projectId,
-        groupId: 5,
         name: "SFX 1",
         volume: 100,
         pan: 0,
         isMuted: false,
         order: 1,
-        createdAt: now,
-        updatedAt: now,
+        events: [
+          {
+            id: 2,
+            soundAssetId: 202,
+            startTime: 3.2,
+            endTime: 4.1,
+            offset: 0.0,
+            volumeOverride: 95,
+            fadeIn: 0.0,
+            fadeOut: 0.1,
+            isUserEdited: false,
+          },
+        ],
       },
     ],
-    trackEvents: [
-      {
-        id: 1,
-        projectId,
-        trackId: 1,
-        soundAssetId: 101,
-        startTime: 0.0,
-        endTime: 15.5,
-        offset: 0.0,
-        volumeOverride: 80,
-        fadeIn: 0.5,
-        fadeOut: 1.0,
-        isUserEdited: false,
-        createdAt: now,
-        updatedAt: now,
-      },
-      {
-        id: 2,
-        projectId,
-        trackId: 2,
-        soundAssetId: 202,
-        startTime: 3.2,
-        endTime: 4.1,
-        offset: 0.0,
-        volumeOverride: 95,
-        fadeIn: 0.0,
-        fadeOut: 0.1,
-        isUserEdited: false,
-        createdAt: now,
-        updatedAt: now,
-      },
-    ],
+  };
+
+  const trackGroups = TRACK_GROUP_TYPES.map((type, idx) => ({
+    id: idx + 1,
+    type,
+    volume: 80,
+    isMuted: false,
+    isSolo: false,
+    order: idx + 1,
+    tracks: tracksByGroup[type] ?? [],
+  }));
+
+  return {
+    version: 1,
+    trackGroups,
+  };
+}
+
+/** 프로젝트 상세 + 스냅샷 + soundAssets (GET /:id/load 목 응답) */
+export function buildMockProjectDetail(projectId: number) {
+  return {
+    id: projectId,
+    title: `Mock Project ${projectId}`,
+    thumbnailUrl: null,
+    status: "ready",
+    originalVideoUrl: null,
+    finalVideoUrl: null,
+    durationSeconds: 30,
+    snapshot: buildMockSnapshot(projectId),
+    soundAssets: buildMockSoundAssets(),
   };
 }
