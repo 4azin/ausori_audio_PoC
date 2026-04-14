@@ -1,59 +1,36 @@
-hi# Commit Convention
+This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
 
-## 커밋 메시지 구조
+## Getting Started
 
-```
-<type>(<scope>): <subject>
+First, run the development server:
 
-<body>
-
-<footer>
-```
-
-## Type
-
-| Type | 설명 |
-|------|------|
-| `feat` | 새로운 기능 추가 |
-| `fix` | 버그 수정 |
-| `docs` | 문서 수정 (README 등) |
-| `style` | 코드 포맷팅, 세미콜론 누락 등 (코드 변경 없음) |
-| `refactor` | 코드 리팩토링 (기능 변경 없음) |
-| `test` | 테스트 코드 추가/수정 |
-| `chore` | 빌드 설정, 패키지 매니저 수정 등 |
-| `perf` | 성능 개선 |
-| `ci` | CI/CD 설정 변경 |
-| `build` | 빌드 시스템 또는 외부 의존성 변경 |
-| `revert` | 이전 커밋 되돌리기 |
-
-## 규칙
-
-- `subject`는 50자 이내로 작성
-- 첫 글자는 소문자로 시작
-- 끝에 마침표(`.`) 붙이지 않기
-- 명령문(imperative mood)으로 작성 (예: "add" O, "added" X)
-- `body`는 선택사항이며, **무엇을** 그리고 **왜** 변경했는지 작성
-- `footer`는 Breaking Change나 이슈 번호 참조 시 사용
-
-## 예시
-
-```
-feat(auth): add JWT token authentication
-
-- Access token, Refresh token 발급 로직 구현
-- 토큰 만료 시 자동 갱신 처리
-
-Closes #123
+```bash
+npm run dev
+# or
+yarn dev
+# or
+pnpm dev
+# or
+bun dev
 ```
 
-```
-fix(user): resolve password validation error
+Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
 
-비밀번호 특수문자 포함 검증 로직이 누락되어 추가
+You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
 
-Fixes #456
-```
+This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
 
-```
-docs(readme): add commit convention guide
-```
+## Learn More
+
+To learn more about Next.js, take a look at the following resources:
+
+- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
+- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+
+You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+
+## Deploy on Vercel
+
+The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+
+Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
