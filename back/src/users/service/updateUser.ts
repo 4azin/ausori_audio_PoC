@@ -4,7 +4,7 @@ import { notFoundError } from "../../middleware/customError";
 
 /** 유저 정보 수정 */
 export async function updateUser(
-  id: string,
+  id: number,
   data: Partial<{ name: string }>
 ): Promise<User> {
   const user = await userModel.updateById(id, data);

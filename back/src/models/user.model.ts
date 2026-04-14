@@ -4,7 +4,7 @@ import { User } from "./user.types";
 /** DB 컬럼(snake_case) → User 타입(camelCase) 변환 */
 function toUser(row: Record<string, unknown>): User {
   return {
-    id: row.id as string,
+    id: row.id as number,
     email: row.email as string,
     name: row.name as string,
     profileImageUrl: row.profile_image_url as string | null,
@@ -36,7 +36,7 @@ export const userModel = {
   },
 
   /** ID로 유저 단건 조회 */
-  async findById(id: string): Promise<User | undefined> {
+  async findById(id: number): Promise<User | undefined> {
     const { rows } = await pool.query(
       "SELECT * FROM users WHERE id = $1",
       [id]
@@ -64,8 +64,8 @@ export const userModel = {
     profileImageUrl: string | null;
   }): Promise<User> {
     const { rows } = await pool.query(
-      `INSERT INTO users (id, google_id, email, name, profile_image_url)
-       VALUES (gen_random_uuid(), $1, $2, $3, $4)
+      `INSERT INTO users (google_id, email, name, profile_image_url)
+       VALUES ($1, $2, $3, $4)
        ON CONFLICT (google_id)
        DO UPDATE SET
          name = EXCLUDED.name,
@@ -80,8 +80,8 @@ export const userModel = {
   /** 유저 생성 */
   async create(data: { email: string; name: string }): Promise<User> {
     const { rows } = await pool.query(
-      `INSERT INTO users (id, email, name)
-       VALUES (gen_random_uuid(), $1, $2)
+      `INSERT INTO users (email, name)
+       VALUES ($1, $2)
        RETURNING *`,
       [data.email, data.name]
     );
@@ -90,7 +90,7 @@ export const userModel = {
 
   /** 유저 정보 수정 — 수정할 필드만 받아서 덮어씀 */
   async updateById(
-    id: string,
+    id: number,
     data: Partial<Pick<User, "name">>
   ): Promise<User | undefined> {
     const { rows } = await pool.query(
@@ -104,7 +104,7 @@ export const userModel = {
   },
 
   /** 유저 삭제 */
-  async deleteById(id: string): Promise<boolean> {
+  async deleteById(id: number): Promise<boolean> {
     const { rowCount } = await pool.query(
       "DELETE FROM users WHERE id = $1",
       [id]

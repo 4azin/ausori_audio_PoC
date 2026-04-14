@@ -1,6 +1,6 @@
 /** User 엔티티 타입 정의 — ERD users 테이블 기준 */
 export interface User {
-  id: string;
+  id: number;
   email: string;
   name: string;
   profileImageUrl: string | null;

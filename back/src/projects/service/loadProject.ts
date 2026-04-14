@@ -7,7 +7,7 @@ import {
 import { notFoundError } from "../../middleware/customError";
 
 /** 프로젝트 에디터 상태 로드 */
-export async function loadProject(projectId: number, userId: string) {
+export async function loadProject(projectId: number, userId: number) {
   const project = await projectModel.findById(projectId);
 
   if (!project) throw notFoundError("프로젝트를 찾을 수 없습니다");

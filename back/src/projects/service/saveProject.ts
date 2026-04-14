@@ -10,7 +10,7 @@ import { SaveProjectDto } from "../dto";
 /** 프로젝트 에디터 상태 일괄 저장 */
 export async function saveProject(
   projectId: number,
-  userId: string,
+  userId: number,
   data: SaveProjectDto,
 ) {
   const project = await projectModel.findById(projectId);
