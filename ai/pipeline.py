@@ -34,10 +34,25 @@ import json
 import os
 import tempfile
 
-import redis_client as rc
+try:
+    import redis_client as rc
+    _redis_available = True
+except Exception:
+    _redis_available = False
+
 import analyze_global
 import analyze_local_foley
 import analyze_local_non_foley
+
+
+def _progress(job_id: str, status: str, pct: int) -> None:
+    """Redis 없이도 동작하는 progress 업데이트."""
+    print(f"[progress] {status} {pct}%")
+    if _redis_available:
+        try:
+            rc.set_progress(job_id, status, pct)
+        except Exception:
+            pass
 
 
 def run(job: dict) -> dict:
@@ -46,9 +61,9 @@ def run(job: dict) -> dict:
     video_path = job["video_path"]  # worker가 S3에서 내려받은 로컬 경로
 
     # 1. 전체 영상 글로벌 분석
-    rc.set_progress(job_id, "global_analyzing", 10)
+    _progress(job_id, "global_analyzing", 10)
     global_result = analyze_global.analyze(video_path)
-    rc.set_progress(job_id, "global_analyzing", 35)
+    _progress(job_id, "global_analyzing", 35)
 
     # 2. Foley 분석 + 3. Non-Foley 분석
     # analyze_all 함수들이 JSON 파일 경로를 받으므로 임시 파일로 연결
@@ -59,20 +74,20 @@ def run(job: dict) -> dict:
         global_json_path = f.name
 
     try:
-        rc.set_progress(job_id, "foley_analyzing", 40)
+        _progress(job_id, "foley_analyzing", 40)
         foley_result = analyze_local_foley.analyze_all(video_path, global_json_path)
-        rc.set_progress(job_id, "foley_analyzing", 65)
+        _progress(job_id, "foley_analyzing", 65)
 
-        rc.set_progress(job_id, "non_foley_analyzing", 70)
+        _progress(job_id, "non_foley_analyzing", 70)
         non_foley_result = analyze_local_non_foley.analyze_all(video_path, global_json_path)
-        rc.set_progress(job_id, "non_foley_analyzing", 90)
+        _progress(job_id, "non_foley_analyzing", 90)
     finally:
         os.unlink(global_json_path)
 
     # 4. 결과 패키징
     result = _package(global_result, foley_result, non_foley_result)
 
-    rc.set_progress(job_id, "done", 100)
+    _progress(job_id, "done", 100)
     return result
 
 
