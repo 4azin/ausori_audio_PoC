@@ -10,6 +10,13 @@ export { trackEventModel } from "./trackEvent.model";
 export { TrackEvent } from "./trackEvent.types";
 export { soundAssetModel } from "./soundAsset.model";
 export { SoundAsset } from "./soundAsset.types";
+export { categoryModel } from "./category.model";
+export {
+  CategoryMajor,
+  CategoryMid,
+  CategorySub,
+  CategoryTree,
+} from "./category.types";
 export { projectSnapshotModel } from "./projectSnapshot.model";
 export {
   ProjectSnapshot,
