@@ -2,6 +2,7 @@ import express from "express";
 import session from "express-session";
 
 import { connectRedis } from "./config/redis";
+import { startJobConsumer } from "./jobs";
 import { sessionConfig } from "./config/session";
 import { errorHandler } from "./middleware/errorHandler";
 import { responseWrapper } from "./middleware/responseWrapper";
@@ -38,6 +39,7 @@ app.use(errorHandler);
 /** Redis 연결 후 서버 시작 */
 async function bootstrap() {
   await connectRedis();
+  await startJobConsumer();
 
   app.listen(PORT, () => {
     console.log(`Server is running on port ${PORT}`);

@@ -2,7 +2,7 @@ import { v4 as uuidv4 } from "uuid";
 
 import { projectModel } from "../../models";
 import { s3Repository } from "../../config/s3";
-import { jobRepository } from "../../config/redis";
+import { jobRepository } from "../../jobs";
 import { notFoundError, badRequestError } from "../../middleware/customError";
 
 /** 영상 업로드 → S3 저장 → AI 작업 큐 등록 */
@@ -19,7 +19,6 @@ export async function uploadVideo(
     throw badRequestError("현재 상태에서는 영상을 업로드할 수 없습니다");
   }
 
-  /** S3 업로드 */
   const ext = file.originalname.split(".").pop() || "mp4";
   const s3Key = `videos/${projectId}/${uuidv4()}.${ext}`;
 
@@ -29,10 +28,8 @@ export async function uploadVideo(
     contentType: file.mimetype,
   });
 
-  /** 프로젝트 상태 업데이트 */
   await projectModel.update(projectId, { status: "analyzing" });
 
-  /** AI 작업 큐 등록 */
   const jobId = uuidv4();
 
   await jobRepository.enqueue({
@@ -40,6 +37,7 @@ export async function uploadVideo(
     project_id: String(projectId),
     video_path: s3Key,
   });
+  await jobRepository.linkProjectJob(projectId, jobId);
 
   return { jobId, s3Key };
 }
