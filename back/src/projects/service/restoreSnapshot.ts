@@ -72,6 +72,7 @@ export async function restoreSnapshot(
         eventInputs.push({
           trackId: createdTracks[idx].id,
           soundAssetId: e.soundAssetId,
+          aiEventId: e.aiEventId ?? null,
           startTime: e.startTime,
           endTime: e.endTime,
           offset: e.offset,

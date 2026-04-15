@@ -5,6 +5,7 @@ import {
   trackGroupModel,
   trackModel,
   trackEventModel,
+  aiEventModel,
   projectSnapshotModel,
   SnapshotPayload,
 } from "../models";
@@ -27,6 +28,21 @@ async function persistJobResult(payload: JobDoneMessage) {
   const { projectId, result } = payload;
 
   await withTransaction(async (client) => {
+    // ai_events 는 append-only — track_events 는 지우더라도 여기는 유지
+    const batch = await aiEventModel.nextBatch(projectId, client);
+    const aiEvents = await aiEventModel.createMany(
+      projectId,
+      batch,
+      result.aiEvents.map((a) => ({
+        groupType: a.groupType,
+        description: a.description,
+        embedding: a.embedding,
+        suggestedStartTime: a.suggestedStartTime ?? null,
+        suggestedEndTime: a.suggestedEndTime ?? null,
+      })),
+      client,
+    );
+
     await trackEventModel.deleteAllByProjectId(projectId, client);
     await trackModel.deleteAllByProjectId(projectId, client);
     await trackGroupModel.deleteAllByProjectId(projectId, client);
@@ -62,6 +78,7 @@ async function persistJobResult(payload: JobDoneMessage) {
       result.trackEvents.map((e) => ({
         trackId: tracks[e.trackIndex].id,
         soundAssetId: e.soundAssetId,
+        aiEventId: aiEvents[e.aiEventIndex]?.id ?? null,
         startTime: e.startTime,
         endTime: e.endTime,
         offset: e.offset,
@@ -108,6 +125,7 @@ async function persistJobResult(payload: JobDoneMessage) {
           events: (eventsByTrack.get(t.id) ?? []).map((e) => ({
             id: e.id,
             soundAssetId: e.soundAssetId,
+            aiEventId: e.aiEventId,
             startTime: e.startTime,
             endTime: e.endTime,
             offset: e.offset,

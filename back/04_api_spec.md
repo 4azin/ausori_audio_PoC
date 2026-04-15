@@ -513,6 +513,7 @@ Google OAuth 로그인 / 신규 회원가입
                 {
                   "id": 1,
                   "soundAssetId": 101,
+                  "aiEventId": 42,
                   "startTime": 0.0,
                   "endTime": 15.5,
                   "offset": 0.0,
@@ -549,6 +550,11 @@ Google OAuth 로그인 / 신규 회원가입
 
 **`soundAssets` 맵**
 - 현재 스냅샷에서 참조되는 `soundAssetId`에 해당하는 재생 메타데이터를 key-value 형태로 inline 반환해 N+1 요청을 방지한다.
+
+**`aiEventId`**
+- AI 분석 파이프라인이 생성한 이벤트(의도 + embedding)와의 역참조.
+- `null`이면 유저가 수동으로 추가한 클립이다.
+- 프론트는 이 값을 save 요청에 **그대로 round-trip**해 보존해야 한다. 이후 "이 클립과 유사한 사운드 찾기" API(`/api/sounds/:id/similar?trackEventId=…`)가 이 id를 역참조해 원 의도 기반 벡터 검색을 수행한다.
 
 ---
 
@@ -643,6 +649,7 @@ Google OAuth 로그인 / 신규 회원가입
     {
       "trackIndex": 0,
       "soundAssetId": 101,
+      "aiEventId": 42,
       "startTime": 0.0,
       "endTime": 15.5,
       "offset": 0.0,
@@ -656,6 +663,10 @@ Google OAuth 로그인 / 신규 회원가입
 ```
 
 `type`은 `ambience | cinematic | dialogue_vo | foley | sfx | music` 중 하나.
+
+**`aiEventId`**
+- load 응답에서 받은 값을 그대로 round-trip. 유저가 수동 추가한 클립은 생략(또는 null).
+- 백엔드는 값 유효성(해당 프로젝트 소속 ai_event인지)만 검증하고 그대로 저장. ai_events 테이블은 save 과정에서 **절대 변경·삭제되지 않는다**.
 
 **Response 201**
 ```json
@@ -810,15 +821,22 @@ Google OAuth 로그인 / 신규 회원가입
 
 **인증 필요**: 로그인 상태
 
+**검색 벡터 우선순위**
+1. `trackEventId`가 주어지고 해당 track_event가 `ai_event_id`를 가지면 → **ai_events.embedding** (원 AI 의도)
+2. 그 외 → `:id` 에셋의 **sound_assets.embedding** (파일 자체 유사)
+
+즉, 가능하면 "원래 AI가 어떤 소리를 원했는가"로 검색하고, 유저가 수동 추가한 클립 등 맥락이 없을 때만 현재 사운드 파일 자체로 검색한다.
+
 **Query Parameters**
 | 파라미터 | 타입 | 설명 |
 |---------|------|------|
+| trackEventId | number | 현재 클립의 `track_events.id`. 있으면 ai_event 기반 검색 시도 (선택) |
 | level | string | `major` \| `mid` \| `sub` — 필터 기준 카테고리 레벨. 기본값: 소스 에셋의 `sub` |
 | categoryId | number | 해당 level의 카테고리 ID. 기본값: 소스 에셋의 해당 level ID |
 | limit | number | 페이지당 개수 (기본 50, 최대 100) |
 | cursor | string | 이전 응답의 `nextCursor` (페이지네이션) |
 
-클라이언트는 에셋 클릭 시 `level=sub` 기본 호출, 사용자가 탭 전환할 때마다 level/categoryId를 바꿔 재호출한다. 탭 단위 응답은 프론트에서 캐싱.
+클라이언트는 에셋 클릭 시 `trackEventId`를 함께 넘기고 `level=sub` 기본 호출, 사용자가 탭 전환할 때마다 level/categoryId를 바꿔 재호출한다. 탭 단위 응답은 프론트에서 캐싱.
 
 **Response 200**
 ```json
@@ -826,6 +844,8 @@ Google OAuth 로그인 / 신규 회원가입
   "success": true,
   "data": {
     "sourceId": 42,
+    "queryVector": "ai_event",
+    "aiEventId": 42,
     "level": "sub",
     "categoryId": 7,
     "sounds": [
@@ -845,7 +865,9 @@ Google OAuth 로그인 / 신규 회원가입
 }
 ```
 
-`similarity`는 `1 - cosine_distance` (0~1, 1에 가까울수록 유사). 소스 자기 자신은 응답에서 제외한다.
+- `similarity`는 `1 - cosine_distance` (0~1, 1에 가까울수록 유사). 소스 자기 자신은 응답에서 제외한다.
+- `queryVector`는 `"ai_event" | "sound_asset"` — 어떤 벡터로 검색했는지 명시. 프론트 배지/툴팁에 노출 가능.
+- `aiEventId`는 ai_event 기반 검색 시에만 포함.
 
 ---
 

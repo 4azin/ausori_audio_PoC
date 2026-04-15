@@ -37,6 +37,7 @@ export interface SnapshotTrack {
 export interface SnapshotEvent {
   id: number;
   soundAssetId: number;
+  aiEventId: number | null;
   startTime: number;
   endTime: number;
   offset: number;

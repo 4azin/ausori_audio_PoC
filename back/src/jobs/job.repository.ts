@@ -11,7 +11,7 @@ export const JOB_CONSUMER_GROUP = "backend";
 export const jobRepository = {
   /** 작업 요청 저장 */
   async enqueue(data: JobRequest): Promise<void> {
-    await redisClient.set(`${REQUEST_PREFIX}${data.job_id}`, JSON.stringify(data));
+    await redisClient.set(`${REQUEST_PREFIX}${data.jobId}`, JSON.stringify(data));
   },
 
   async getRequest(jobId: string): Promise<JobRequest | null> {
@@ -21,7 +21,7 @@ export const jobRepository = {
 
   /** 진행 상황 갱신/조회 (AI 워커가 write, 백엔드가 read) */
   async setProgress(data: JobProgress): Promise<void> {
-    await redisClient.set(`${PROGRESS_PREFIX}${data.job_id}`, JSON.stringify(data));
+    await redisClient.set(`${PROGRESS_PREFIX}${data.jobId}`, JSON.stringify(data));
   },
 
   async getProgress(jobId: string): Promise<JobProgress | null> {

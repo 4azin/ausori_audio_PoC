@@ -4,6 +4,7 @@ import { TrackEvent } from "./trackEvent.types";
 const COLUMNS = `
   id, project_id AS "projectId", track_id AS "trackId",
   sound_asset_id AS "soundAssetId",
+  ai_event_id AS "aiEventId",
   start_time AS "startTime", end_time AS "endTime", "offset",
   volume_override AS "volumeOverride",
   fade_in AS "fadeIn", fade_out AS "fadeOut",
@@ -41,17 +42,17 @@ export const trackEventModel = {
 
     for (const e of data) {
       values.push(
-        `($${i++}, $${i++}, $${i++}, $${i++}, $${i++}, $${i++}, $${i++}, $${i++}, $${i++}, $${i++})`,
+        `($${i++}, $${i++}, $${i++}, $${i++}, $${i++}, $${i++}, $${i++}, $${i++}, $${i++}, $${i++}, $${i++})`,
       );
       params.push(
-        projectId, e.trackId, e.soundAssetId,
+        projectId, e.trackId, e.soundAssetId, e.aiEventId ?? null,
         e.startTime, e.endTime, e.offset,
         e.volumeOverride, e.fadeIn, e.fadeOut, e.isUserEdited,
       );
     }
 
     const sql = `INSERT INTO track_events
-                   (project_id, track_id, sound_asset_id,
+                   (project_id, track_id, sound_asset_id, ai_event_id,
                     start_time, end_time, "offset",
                     volume_override, fade_in, fade_out, is_user_edited)
                  VALUES ${values.join(", ")}

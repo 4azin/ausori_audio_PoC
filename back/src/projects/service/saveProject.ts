@@ -68,6 +68,7 @@ export async function saveProject(
       data.trackEvents.map((e) => ({
         trackId: createdTracks[e.trackIndex].id,
         soundAssetId: e.soundAssetId,
+        aiEventId: e.aiEventId ?? null,
         startTime: e.startTime,
         endTime: e.endTime,
         offset: e.offset,
@@ -114,6 +115,7 @@ export async function saveProject(
           events: (eventsByTrack.get(t.id) ?? []).map((e) => ({
             id: e.id,
             soundAssetId: e.soundAssetId,
+            aiEventId: e.aiEventId,
             startTime: e.startTime,
             endTime: e.endTime,
             offset: e.offset,

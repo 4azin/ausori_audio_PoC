@@ -54,6 +54,7 @@ export async function loadProject(projectId: number, userId: number) {
       events: (eventsByTrack.get(t.id) ?? []).map((e) => ({
         id: e.id,
         soundAssetId: e.soundAssetId,
+        aiEventId: e.aiEventId,
         startTime: e.startTime,
         endTime: e.endTime,
         offset: e.offset,
