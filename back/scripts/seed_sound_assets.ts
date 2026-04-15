@@ -165,6 +165,7 @@ async function main() {
     console.log(`[seed] staged total: ${total}`);
 
     // 3) 정합성 검증 — JSONL의 key 와 시드된 category 이름 일치 확인
+    //    sub는 flat 라벨이라 mid 종속 검증은 하지 않음 (mid만 major 종속 확인).
     const mismatch = await client.query(`
       SELECT s.s3_key, s.major_id, s.major_key, s.mid_id, s.mid_key, s.sub_id, s.sub_key
       FROM _staging_sound_assets s
@@ -175,7 +176,6 @@ async function main() {
          OR mi.name IS DISTINCT FROM s.mid_key
          OR su.name IS DISTINCT FROM s.sub_key
          OR mi.major_id IS DISTINCT FROM s.major_id
-         OR su.mid_id   IS DISTINCT FROM s.mid_id
       LIMIT 20
     `);
     if (mismatch.rowCount && mismatch.rowCount > 0) {
