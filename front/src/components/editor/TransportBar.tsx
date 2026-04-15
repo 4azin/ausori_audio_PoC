@@ -9,6 +9,24 @@ export function TransportBar() {
   const playheadTime = useTimelineStore((s) => s.playheadTime);
   const setPlayheadTime = useTimelineStore((s) => s.setPlayheadTime);
   const videoSeekFn = useTimelineStore((s) => s.videoSeekFn);
+  const pixelsPerSecond = useTimelineStore((s) => s.pixelsPerSecond);
+  const setPixelsPerSecond = useTimelineStore((s) => s.setPixelsPerSecond);
+
+  const PPS_MIN = 20;
+  const PPS_MAX = 400;
+  // 로그 스케일: 슬라이더 0~100 → pps 20~400
+  const toSlider = (pps: number) =>
+    Math.round((Math.log(pps) - Math.log(PPS_MIN)) / (Math.log(PPS_MAX) - Math.log(PPS_MIN)) * 100);
+  const fromSlider = (v: number) =>
+    Math.round(Math.exp(Math.log(PPS_MIN) + (v / 100) * (Math.log(PPS_MAX) - Math.log(PPS_MIN))));
+
+  const sliderValue = toSlider(pixelsPerSecond);
+  const handleZoomChange = (e: React.ChangeEvent<HTMLInputElement>) =>
+    setPixelsPerSecond(fromSlider(Number(e.target.value)));
+  const handleZoomMinus = () =>
+    setPixelsPerSecond(Math.max(PPS_MIN, fromSlider(Math.max(0, sliderValue - 10))));
+  const handleZoomPlus = () =>
+    setPixelsPerSecond(Math.min(PPS_MAX, fromSlider(Math.min(100, sliderValue + 10))));
 
   const handlePlayPause = () => setIsPlaying(!isPlaying);
 
@@ -27,17 +45,28 @@ export function TransportBar() {
 
       {/* Grid and Zoom Controls */}
       <div className="flex flex-col gap-1 w-[250px]">
-        <div className="flex space-x-12 px-2">
+        <div className="flex items-center justify-between px-2">
           <span className="text-[9px] uppercase font-bold text-gray-500 tracking-wider">Zoom</span>
+          <span className="text-[9px] font-mono text-[#00f0ff]/60">{Math.round(pixelsPerSecond)}px/s</span>
         </div>
-        <div className="flex gap-4">
-          <div className="flex items-center gap-2">
-            <button className="w-6 h-6 bg-[#1a1a20] border border-[#2a2a35] text-gray-400 rounded flex items-center justify-center hover:bg-[#25252b] hover:text-[#00f0ff] transition-colors">-</button>
-            <div className="w-24 h-1.5 bg-[#0a0a0c] border border-[#22222a] rounded-full overflow-hidden shadow-inner">
-              <div className="w-1/2 h-full bg-[#00f0ff] shadow-[0_0_5px_#00f0ff]"></div>
-            </div>
-            <button className="w-6 h-6 bg-[#1a1a20] border border-[#2a2a35] text-gray-400 rounded flex items-center justify-center hover:bg-[#25252b] hover:text-[#00f0ff] transition-colors">+</button>
-          </div>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={handleZoomMinus}
+            className="w-6 h-6 bg-[#1a1a20] border border-[#2a2a35] text-gray-400 rounded flex items-center justify-center hover:bg-[#25252b] hover:text-[#00f0ff] transition-colors shrink-0"
+          >-</button>
+          <input
+            type="range"
+            min={0}
+            max={100}
+            value={sliderValue}
+            onChange={handleZoomChange}
+            className="flex-1 h-1.5 rounded-full appearance-none cursor-pointer [&::-webkit-slider-runnable-track]:rounded-full [&::-webkit-slider-runnable-track]:h-1.5 [&::-webkit-slider-runnable-track]:bg-[#0a0a0c] [&::-webkit-slider-runnable-track]:border [&::-webkit-slider-runnable-track]:border-[#22222a] [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-3 [&::-webkit-slider-thumb]:h-3 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-[#00f0ff] [&::-webkit-slider-thumb]:shadow-[0_0_6px_#00f0ff] [&::-webkit-slider-thumb]:-mt-[3px]"
+            style={{ background: `linear-gradient(to right, #00f0ff ${sliderValue}%, #0a0a0c ${sliderValue}%)` }}
+          />
+          <button
+            onClick={handleZoomPlus}
+            className="w-6 h-6 bg-[#1a1a20] border border-[#2a2a35] text-gray-400 rounded flex items-center justify-center hover:bg-[#25252b] hover:text-[#00f0ff] transition-colors shrink-0"
+          >+</button>
         </div>
       </div>
 
