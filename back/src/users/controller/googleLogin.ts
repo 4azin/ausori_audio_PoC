@@ -12,5 +12,12 @@ export async function googleLogin(req: Request, res: Response) {
   req.session.userId = user.id;
   req.session.userRole = user.role;
 
-  res.status(200).json(user);
+  res.status(200).json({
+    id: user.id,
+    email: user.email,
+    name: user.name,
+    profileImageUrl: user.profileImageUrl,
+    role: user.role,
+    plan: user.plan,
+  });
 }
