@@ -81,32 +81,31 @@ erDiagram
 
     category_major {
         bigserial id PK
-        string name UK "ambience | foley | sfx | music | cinematic"
+        string name UK "Ambience | Cinematic | Dialogue_VO | Foley | SFX | Music (taxonomy.json 원본 표기)"
     }
 
     category_mid {
         bigserial id PK
-        bigint major_id FK
-        string name "weather | footsteps | impact 등"
+        bigint major_id FK "ON DELETE CASCADE"
+        string name "Weather | Footsteps | Impact 등 (taxonomy 원본 표기)"
     }
 
     category_sub {
         bigserial id PK
-        bigint mid_id FK
-        string name "rain | thunder | snow 등"
+        string name "Rain | Thunder | Snow 등 (flat 라벨 풀, 이름 중복 허용)"
     }
 
     sound_assets {
         bigserial id PK
-        bigint designer_id FK "nullable (null이면 기본 라이브러리)"
+        bigint designer_id FK "nullable, ON DELETE SET NULL (null이면 기본 라이브러리)"
         string file_name
-        string s3_key
-        string original_path "디자이너 원본 폴더 경로"
-        bigint major_id FK
-        bigint mid_id FK
-        bigint sub_id FK
-        text[] mood "calm, peaceful 등"
-        text[] tags "rain, window, interior 등"
+        string s3_key UK
+        string original_path "디자이너 원본 폴더 경로 (nullable)"
+        bigint major_id FK "ON DELETE RESTRICT"
+        bigint mid_id FK "ON DELETE RESTRICT"
+        bigint sub_id FK "ON DELETE RESTRICT"
+        text[] mood "NOT NULL DEFAULT '{}' — calm, peaceful 등"
+        text[] tags "NOT NULL DEFAULT '{}' — rain, window, interior 등"
         string description
         int bpm "음악만, 나머지 NULL"
         text[] instruments "음악만"
@@ -138,7 +137,6 @@ erDiagram
     track_events }o--|| sound_assets : "uses"
     sound_designers ||--o{ sound_assets : "uploads"
     category_major ||--o{ category_mid : "has"
-    category_mid ||--o{ category_sub : "has"
     category_major ||--o{ sound_assets : "classifies"
     category_mid ||--o{ sound_assets : "classifies"
     category_sub ||--o{ sound_assets : "classifies"
@@ -219,7 +217,7 @@ erDiagram
 | id | BIGSERIAL | PK |
 | project_id | BIGINT | FK → projects (비정규화) |
 | track_id | BIGINT | FK → tracks |
-| sound_asset_id | BIGINT | FK → sound_assets |
+| sound_asset_id | BIGINT | FK → sound_assets, **ON DELETE RESTRICT** (사용 중 에셋 삭제 차단) |
 | start_time | FLOAT | 효과음 시작 시간 (초) |
 | end_time | FLOAT | 효과음 종료 시간 (초) |
 | offset | FLOAT | 원본 오디오 트림 시작점 (초) |
@@ -288,17 +286,21 @@ erDiagram
 
 ### category_major / category_mid / category_sub
 효과음 3단계 분류 체계 (대분류 → 중분류 → 소분류). 전 단계 NOT NULL.
+원천 데이터는 `ai/taxonomy.json`이며, 이름은 **taxonomy 원본 표기**(`Ambience`, `Dialogue_VO`, `SFX`, `UI`, `Slam` 등)를 그대로 저장한다. `track_group_type` enum(소문자)과는 앱 레이어에서 매핑.
 
 | 테이블 | 컬럼 | 타입 | 설명 |
 |--------|------|------|------|
 | category_major | id | BIGSERIAL | PK |
-| | name | VARCHAR | 대분류 |
+| | name | VARCHAR(50) | 대분류. **UNIQUE**. 6개: Ambience / Cinematic / Dialogue_VO / Foley / SFX / Music |
 | category_mid | id | BIGSERIAL | PK |
-| | major_id | BIGINT | FK → category_major |
-| | name | VARCHAR | 중분류 |
+| | major_id | BIGINT | FK → category_major, **ON DELETE CASCADE** |
+| | name | VARCHAR(50) | 중분류. **UNIQUE (major_id, name)** — 같은 대분류 하위에서만 유일 |
 | category_sub | id | BIGSERIAL | PK |
-| | mid_id | BIGINT | FK → category_mid |
-| | name | VARCHAR | 소분류 |
+| | name | VARCHAR(50) | 소분류. **flat 라벨 풀 — 이름 중복 허용** (예: Metal/Wood/Dark 등 맥락별 변형 id) |
+
+> **category_sub가 flat인 이유**: JSONL 원천 데이터에서 sub는 mid의 child가 아니라 독립적 라벨 축이다. 동일한 sub(예: `Slam` = id 174)이 여러 mid(`Impact`, `UI`, `Explosion` 등) 아래 등장한다. 따라서 `category_sub.mid_id` FK를 두지 않고 전역 id 풀로 관리한다. `sound_assets`에는 `(major_id, mid_id, sub_id)` 3개 FK가 **독립적**으로 붙는다.
+
+> **ID 고정 전략**: `taxonomy.json` 선언 순서대로 INSERT하면 BIGSERIAL이 부여하는 id가 `sound_assets_*.jsonl`의 `major_id / mid_id / sub_id`와 정확히 일치한다 (검증: SFX=5, SFX/UI=45, SFX/Impact/Slam=174). seed 이후 `setval('category_*_id_seq', MAX(id))`로 시퀀스 보정.
 
 ### sound_assets
 효과음 파일 메타데이터. 기본 라이브러리 + 마켓플레이스 에셋 모두 포함.
@@ -306,15 +308,15 @@ erDiagram
 | 컬럼 | 타입 | 설명 |
 |------|------|------|
 | id | BIGSERIAL | PK |
-| designer_id | BIGINT | FK → sound_designers (null이면 기본 라이브러리) |
+| designer_id | BIGINT | FK → sound_designers, **ON DELETE SET NULL** (null이면 기본 라이브러리) |
 | file_name | VARCHAR | 파일 이름 |
-| s3_key | VARCHAR | S3 저장 경로 |
+| s3_key | VARCHAR | S3 저장 경로, **UNIQUE** |
 | original_path | VARCHAR | 디자이너 업로드 시 원본 폴더 경로 (nullable, 트리 복원용) |
-| major_id | BIGINT | FK → category_major (NOT NULL) |
-| mid_id | BIGINT | FK → category_mid (NOT NULL) |
-| sub_id | BIGINT | FK → category_sub (NOT NULL) |
-| mood | TEXT[] | 분위기 태그 (calm, peaceful 등) |
-| tags | TEXT[] | 검색/매칭용 태그 (rain, window 등) |
+| major_id | BIGINT | FK → category_major (NOT NULL, **ON DELETE RESTRICT**) |
+| mid_id | BIGINT | FK → category_mid (NOT NULL, **ON DELETE RESTRICT**) |
+| sub_id | BIGINT | FK → category_sub (NOT NULL, **ON DELETE RESTRICT**) |
+| mood | TEXT[] | 분위기 태그. NOT NULL DEFAULT `'{}'` (calm, peaceful 등) |
+| tags | TEXT[] | 검색/매칭용 태그. NOT NULL DEFAULT `'{}'` (rain, window 등) |
 | description | TEXT | 효과음 설명 |
 | bpm | INT | BPM (음악만, 나머지 NULL) |
 | instruments | TEXT[] | 악기 목록 (음악만) |
