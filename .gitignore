@@ -48,3 +48,5 @@ coverage/
 .nyc_output/
 
 ai/output/
+ai/*.mp4
+ai/result.json
