@@ -31,14 +31,37 @@ export const soundAssetModel = {
   },
 
   /**
-   * 카테고리 필터 + 코사인 유사도 top-k.
-   * TODO: pgvector 쿼리 문자열 포맷 (`[0.1,0.2,...]`) 변환 헬퍼 필요.
+   * 카테고리 필터(필수: major+mid, 선택: sub) + 코사인 유사도 top-k.
+   * pgvector `<=>` 연산자 = cosine_distance. similarity = 1 - distance.
+   * 3072 차원이라 ANN 인덱스 없이 seq scan — 7K 행 기준 수십~수백 ms.
    */
   async vectorSearch(
-    _filter: VectorSearchFilter,
-    _queryVec: number[],
-    _k = 1,
+    filter: VectorSearchFilter,
+    queryVec: number[],
+    k = 1,
   ): Promise<VectorSearchHit[]> {
-    throw new Error("[soundAsset.vectorSearch] not implemented");
+    if (queryVec.length === 0) return [];
+    const literal = "[" + queryVec.join(",") + "]";
+
+    const params: unknown[] = [literal, filter.majorId, filter.midId];
+    let where = `major_id = $2 AND mid_id = $3`;
+    if (filter.subId != null) {
+      params.push(filter.subId);
+      where += ` AND sub_id = $${params.length}`;
+    }
+    params.push(k);
+    const limitIdx = params.length;
+
+    const sql = `
+      SELECT id, duration::real AS duration,
+             (1 - (embedding <=> $1::vector))::real AS similarity
+      FROM sound_assets
+      WHERE ${where}
+      ORDER BY embedding <=> $1::vector
+      LIMIT $${limitIdx}
+    `;
+
+    const res = await query<VectorSearchHit>(sql, params);
+    return res.rows;
   },
 };

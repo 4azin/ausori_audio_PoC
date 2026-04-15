@@ -4,10 +4,15 @@ import { TrackGroup } from "./trackGroup.types";
 export interface AiEvent {
   id: number;
   projectId: number;
+  analysisId: number | null;
   groupType: TrackGroup["type"];
   description: string;
-  /** pgvector는 텍스트 리터럴로 쿼리하므로 쓸 때는 string, 읽을 땐 파싱된 number[] */
-  embedding: number[];
+  /**
+   * pgvector는 텍스트 리터럴로 쓰고 파싱된 number[] 로 읽는다.
+   * 일반 SELECT(BASE_COLUMNS)에는 포함되지 않으므로 optional.
+   * embedding 이 필요한 경우 aiEventModel.findEmbeddingById 로 별도 조회.
+   */
+  embedding?: number[];
   suggestedStartTime: number | null;
   suggestedEndTime: number | null;
   analysisBatch: number;

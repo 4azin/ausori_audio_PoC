@@ -712,6 +712,62 @@ Google OAuth 로그인 / 신규 회원가입
 
 ---
 
+### GET /api/projects/:id/analyses
+프로젝트의 AI 분석 리포트 목록 — `project_analyses` 기반. 재분석 회차가 여러 번 돌면 내림차순(batch desc)으로 나온다.
+
+**인증 필요**: 로그인 상태 (본인 프로젝트)
+
+**Response 200**
+```json
+{
+  "success": true,
+  "data": {
+    "analyses": [
+      {
+        "id": 12,
+        "jobId": "550e8400-e29b-41d4-a716-446655440000",
+        "analysisBatch": 2,
+        "videoSummary": "충주맨 김선태가 ...",
+        "videoContext": "충주시 홍보맨 ...",
+        "eventCount": 58,
+        "completedAt": "2026-04-15T04:01:33Z",
+        "createdAt":   "2026-04-15T04:01:34Z"
+      }
+    ]
+  }
+}
+```
+
+`raw_payload` 와 `telemetry` 는 이 목록 API에서는 제외한다(목록은 가벼워야 함).
+
+---
+
+### GET /api/projects/:id/analyses/:batch
+특정 회차의 AI 분석 리포트 상세. `raw_payload`, `telemetry` 포함.
+
+**인증 필요**: 로그인 상태 (본인 프로젝트)
+
+**Response 200**
+```json
+{
+  "success": true,
+  "data": {
+    "id": 12,
+    "jobId": "550e8400-...",
+    "analysisBatch": 2,
+    "videoSummary": "...",
+    "videoContext": "...",
+    "rawPayload": { /* AI JobDoneMessage 원본 전체 */ },
+    "telemetry":  { "llmUsage": {}, "metrics": {} },
+    "completedAt": "2026-04-15T04:01:33Z"
+  }
+}
+```
+
+> `:batch` 는 `analysis_batch` 값. `latest` 를 넣으면 가장 최근 회차를 반환한다.
+
+---
+
 ## 4. 효과음 (Sounds)
 
 ### GET /api/sounds

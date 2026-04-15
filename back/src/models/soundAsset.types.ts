@@ -4,7 +4,7 @@ export interface SoundAsset {
   fileName: string;
   s3Key: string;
   duration: number;
-  format: "mp3" | "ogg" | "wav";
+  format: "mp3" | "ogg" | "wav" | "aif";
   channels: number;
   sampleRate: number;
   fileSize: number;

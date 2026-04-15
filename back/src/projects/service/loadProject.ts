@@ -6,8 +6,19 @@ import {
   soundAssetModel,
   projectSnapshotModel,
   SoundAsset,
+  TrackGroup,
 } from "../../models";
 import { notFoundError } from "../../middleware/customError";
+
+/** 프로젝트 생성 시 자동 만들 6 트랙 그룹의 표시 순서 — load 응답에서도 동일 강제 */
+const DEFAULT_GROUP_ORDER: TrackGroup["type"][] = [
+  "ambience",
+  "cinematic",
+  "dialogue_vo",
+  "foley",
+  "sfx",
+  "music",
+];
 
 /** 에디터 로드 — 프로젝트 메타 + 최신 스냅샷(nested) + soundAssets 맵 */
 export async function loadProject(projectId: number, userId: number) {
@@ -36,14 +47,18 @@ export async function loadProject(projectId: number, userId: number) {
     tracksByGroup.set(t.groupId, arr);
   }
 
-  const trackGroups = groups.map((g) => ({
-    id: g.id,
-    type: g.type,
-    volume: g.volume,
-    isMuted: g.isMuted,
-    isSolo: g.isSolo,
-    order: g.order,
-    tracks: (tracksByGroup.get(g.id) ?? []).map((t) => ({
+  // load 응답은 6 트랙 그룹을 항상 순서대로 포함 (스펙 강제). DB에 없는 type 은 빈 그룹으로 보정.
+  const groupByType = new Map(groups.map((g) => [g.type, g] as const));
+  const trackGroups = DEFAULT_GROUP_ORDER.map((type, idx) => {
+    const g = groupByType.get(type);
+    return {
+      id: g?.id ?? null,
+      type,
+      volume: g?.volume ?? 100,
+      isMuted: g?.isMuted ?? false,
+      isSolo: g?.isSolo ?? false,
+      order: g?.order ?? idx + 1,
+      tracks: (g ? tracksByGroup.get(g.id) ?? [] : []).map((t) => ({
       id: t.id,
       name: t.name,
       volume: t.volume,
@@ -64,7 +79,8 @@ export async function loadProject(projectId: number, userId: number) {
         isUserEdited: e.isUserEdited,
       })),
     })),
-  }));
+    };
+  });
 
   // soundAssets 맵 구성 — 참조 중인 asset만 batch 조회
   const assetIds = Array.from(new Set(events.map((e) => e.soundAssetId)));
@@ -79,6 +95,8 @@ export async function loadProject(projectId: number, userId: number) {
     status: project.status,
     originalVideoUrl: project.originalVideoUrl,
     durationSeconds: project.durationSeconds,
+    createdAt: project.createdAt,
+    updatedAt: project.updatedAt,
     snapshot: {
       version: latestSnapshot?.version ?? 0,
       trackGroups,

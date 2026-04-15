@@ -10,6 +10,11 @@ export { trackEventModel } from "./trackEvent.model";
 export { TrackEvent } from "./trackEvent.types";
 export { aiEventModel } from "./aiEvent.model";
 export { AiEvent } from "./aiEvent.types";
+export { projectAnalysisModel } from "./projectAnalysis.model";
+export {
+  ProjectAnalysis,
+  ProjectAnalysisSummary,
+} from "./projectAnalysis.types";
 export { soundAssetModel } from "./soundAsset.model";
 export { SoundAsset } from "./soundAsset.types";
 export { categoryModel } from "./category.model";

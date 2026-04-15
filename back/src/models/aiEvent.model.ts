@@ -6,8 +6,13 @@ function toVectorLiteral(vec: number[]): string {
   return "[" + vec.join(",") + "]";
 }
 
+/**
+ * 기본 SELECT — embedding 은 12KB/행이라 lookup/list 쿼리에선 제외.
+ * embedding 이 필요한 경우 findEmbeddingById 사용.
+ */
 const BASE_COLUMNS = `
   id, project_id AS "projectId",
+  analysis_id AS "analysisId",
   group_type AS "groupType",
   description,
   suggested_start_time AS "suggestedStartTime",
@@ -16,8 +21,11 @@ const BASE_COLUMNS = `
   created_at AS "createdAt"
 `;
 
-type CreateInput = Omit<AiEvent, "id" | "projectId" | "createdAt" | "analysisBatch"> & {
-  analysisBatch?: number;
+type CreateInput = Omit<
+  AiEvent,
+  "id" | "projectId" | "analysisId" | "analysisBatch" | "createdAt" | "embedding"
+> & {
+  embedding: number[]; // INSERT 시점에는 필수
 };
 
 export const aiEventModel = {
@@ -49,6 +57,7 @@ export const aiEventModel = {
   /** AI 파이프라인 결과 반영 — append-only. 반환 배열은 입력 순서 유지 */
   async createMany(
     projectId: number,
+    analysisId: number,
     batch: number,
     data: CreateInput[],
     runner?: Runner,
@@ -61,10 +70,11 @@ export const aiEventModel = {
 
     for (const e of data) {
       values.push(
-        `($${i++}, $${i++}, $${i++}, $${i++}::vector, $${i++}, $${i++}, $${i++})`,
+        `($${i++}, $${i++}, $${i++}, $${i++}, $${i++}::vector, $${i++}, $${i++}, $${i++})`,
       );
       params.push(
         projectId,
+        analysisId,
         e.groupType,
         e.description,
         toVectorLiteral(e.embedding),
@@ -75,7 +85,7 @@ export const aiEventModel = {
     }
 
     const sql = `INSERT INTO ai_events
-                   (project_id, group_type, description, embedding,
+                   (project_id, analysis_id, group_type, description, embedding,
                     suggested_start_time, suggested_end_time, analysis_batch)
                  VALUES ${values.join(", ")}
                  RETURNING ${BASE_COLUMNS}`;

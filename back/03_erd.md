@@ -75,12 +75,26 @@ erDiagram
     ai_events {
         bigserial id PK
         bigint project_id FK "ON DELETE CASCADE"
+        bigint analysis_id FK "ON DELETE CASCADE — 원 분석 리포트"
         enum group_type "AI가 배정한 원 그룹 (track_group_type)"
         text description "AI 생성 자연어 설명 — 원본 의도"
         vector embedding "vector(3072) — description 임베딩"
         float suggested_start_time "AI 제안 시작 시간 (nullable)"
         float suggested_end_time "AI 제안 종료 시간 (nullable)"
-        int analysis_batch "재분석 회차 구분 (default 1)"
+        int analysis_batch "재분석 회차 (project_analyses.analysis_batch 와 동일값)"
+        timestamp created_at
+    }
+
+    project_analyses {
+        bigserial id PK
+        bigint project_id FK "ON DELETE CASCADE"
+        string job_id "AI 작업 UUID"
+        int analysis_batch "프로젝트 내 재분석 회차"
+        text video_summary "nullable"
+        text video_context "nullable"
+        jsonb raw_payload "AI 원본 JobDoneMessage 통째 (events 포함)"
+        jsonb telemetry "llmUsage / metrics (nullable)"
+        timestamp completed_at "AI 완료 시각"
         timestamp created_at
     }
 
@@ -148,7 +162,9 @@ erDiagram
     track_groups ||--o{ tracks : "contains"
     tracks ||--o{ track_events : "has"
     track_events }o--|| sound_assets : "uses"
-    projects ||--o{ ai_events : "analyzed into"
+    projects ||--o{ project_analyses : "analyzed as"
+    project_analyses ||--o{ ai_events : "extracted into"
+    projects ||--o{ ai_events : "owns"
     ai_events ||--o{ track_events : "spawns (nullable)"
     sound_designers ||--o{ sound_assets : "uploads"
     category_major ||--o{ category_mid : "has"
@@ -244,6 +260,24 @@ erDiagram
 | created_at | TIMESTAMP | 생성일 |
 | updated_at | TIMESTAMP | 수정일 |
 
+### project_analyses
+AI 분석 리포트의 **원본 페이로드**를 append-only 로 보관. 한 번의 AI 작업 완료마다 한 행. `events[]` 를 포함한 JobDoneMessage 전체를 raw_payload 에 담고, 자주 조회되는 video_summary / video_context 는 별도 컬럼으로 승격.
+
+| 컬럼 | 타입 | 설명 |
+|------|------|------|
+| id | BIGSERIAL | PK |
+| project_id | BIGINT | FK → projects, **ON DELETE CASCADE** |
+| job_id | VARCHAR | AI 작업 UUID (`JobDoneMessage.jobId`) |
+| analysis_batch | INT | 프로젝트 내 재분석 회차. `UNIQUE (project_id, analysis_batch)` |
+| video_summary | TEXT | AI가 생성한 영상 전체 요약 (nullable) |
+| video_context | TEXT | 영상 맥락 상세 (nullable) |
+| raw_payload | JSONB | AI 원본 JobDoneMessage 전체. 감사/재처리/디버깅용 |
+| telemetry | JSONB | `llmUsage` / `metrics` 등 운영 지표 (nullable) |
+| completed_at | TIMESTAMP | AI 완료 시각 (`JobDoneMessage.completedAt`) |
+| created_at | TIMESTAMP | 백엔드 INSERT 시각 |
+
+> **역할**: (1) 프론트 "분석 리포트" 뷰의 소스 (2) 재분석 차수 비교 (3) description 재임베딩·재배치의 원천 (4) LLM 비용 추적.
+
 ### ai_events
 AI 분석이 생성한 이벤트 의도(자연어 + embedding). **append-only 영속 자산**으로, 유저가 track_events에서 삭제·이동·수정해도 여기 데이터는 그대로 남는다.
 
@@ -251,12 +285,13 @@ AI 분석이 생성한 이벤트 의도(자연어 + embedding). **append-only �
 |------|------|------|
 | id | BIGSERIAL | PK |
 | project_id | BIGINT | FK → projects, **ON DELETE CASCADE** |
+| analysis_id | BIGINT | FK → project_analyses, **ON DELETE CASCADE**. 원 분석 리포트로 역참조 |
 | group_type | ENUM | AI가 배정한 원 그룹 (`track_group_type`: ambience/cinematic/dialogue_vo/foley/sfx/music) |
 | description | TEXT | AI가 생성한 자연어 설명 (원 의도) |
 | embedding | VECTOR(3072) | description의 Gemini 임베딩 |
 | suggested_start_time | FLOAT | AI 제안 시작 시간(초), nullable |
 | suggested_end_time | FLOAT | AI 제안 종료 시간(초), nullable |
-| analysis_batch | INT | 재분석 회차. 동일 프로젝트 재분석 시 증가 (기본 1). 과거 분석 이력 비교용 |
+| analysis_batch | INT | 재분석 회차. project_analyses.analysis_batch 와 동일 값 (필터 편의용 비정규화) |
 | created_at | TIMESTAMP | 생성일 |
 
 > **유저 편집과의 관계**
@@ -388,6 +423,7 @@ AI 분석이 생성한 이벤트 의도(자연어 + embedding). **append-only �
 - **sound_assets의 designer_id nullable**: 기본 라이브러리(null)와 마켓플레이스 에셋을 동일 테이블로 관리
 - **track_events의 is_user_edited**: AI 결과와 사용자 편집 내역을 구분하여 추후 AI 개선 데이터로 활용 가능
 - **ai_events 분리 / append-only**: AI 분석 결과(description + embedding)는 영속 자산이므로 유저 편집 생애주기(track_events의 live-replace)와 분리. `track_events.ai_event_id`가 역참조. 유저가 클립을 삭제해도 ai_events는 남아 (1) "이 클립과 유사한 다른 사운드"를 원 의도 기반으로 검색하고 (2) 삭제된 AI 제안 복원 UX를 제공하며 (3) 선택/거절 로그를 학습 데이터로 쌓는다
+- **project_analyses 별도**: AI JobDoneMessage 원본 페이로드(영상 요약/맥락/events 전체/telemetry)를 통째 보관. ai_events 가 벡터검색용으로 "추출"한 레이어라면 project_analyses 는 원본 리포트 레이어. (1) 분석 리포트 UI (2) 재분석 회차 비교 (3) 재임베딩·재배치 재처리 (4) LLM 비용 추적 목적
 - **tracks/track_events의 project_id 비정규화**: 에디터 로드 시 3단 조인(track_events → tracks → track_groups → projects) 회피. 읽기 빈도가 압도적인 실시간 에디터 특성에 맞춤
 - **project_snapshots.snapshot 스키마 = load 응답**: 프론트가 받는 구조와 저장 구조를 일치시켜 복원/직렬화 로직 단순화
 - **category 3단계 전부 NOT NULL**: 분류 누락된 에셋이 검색/추천에서 누락되는 케이스 방지
