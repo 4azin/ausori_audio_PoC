@@ -6,8 +6,21 @@ import { useTimelineStore } from '@/stores/useTimelineStore';
 export function TransportBar() {
   const isPlaying = useTimelineStore((s) => s.isPlaying);
   const setIsPlaying = useTimelineStore((s) => s.setIsPlaying);
+  const playheadTime = useTimelineStore((s) => s.playheadTime);
+  const setPlayheadTime = useTimelineStore((s) => s.setPlayheadTime);
+  const videoSeekFn = useTimelineStore((s) => s.videoSeekFn);
 
   const handlePlayPause = () => setIsPlaying(!isPlaying);
+
+  const seekTo = (time: number) => {
+    const clamped = Math.max(0, time);
+    setPlayheadTime(clamped);
+    videoSeekFn?.(clamped);
+  };
+
+  const handleGoToStart = () => seekTo(0);
+  const handleBack10 = () => seekTo(playheadTime - 10);
+  const handleForward10 = () => seekTo(playheadTime + 10);
 
   return (
     <div className="h-16 bg-[#121215] border-t border-[#22222a] flex items-center px-4 justify-between shrink-0 shadow-[0_-5px_15px_rgba(0,0,0,0.5)] z-20 relative">
@@ -32,21 +45,21 @@ export function TransportBar() {
       <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 flex items-center gap-3">
 
         {/* 처음으로 이동 */}
-        <button className="w-10 h-10 bg-[#1a1a20] border border-[#2a2a35] rounded-full shadow-[0_4px_6px_rgba(0,0,0,0.3)] flex items-center justify-center hover:bg-[#25252b] hover:border-[#00f0ff]/50 transition-all group" title="처음으로 이동">
+        <button onClick={handleGoToStart} className="w-10 h-10 bg-[#1a1a20] border border-[#2a2a35] rounded-full shadow-[0_4px_6px_rgba(0,0,0,0.3)] flex items-center justify-center hover:bg-[#25252b] hover:border-[#00f0ff]/50 transition-all group" title="처음으로 이동">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" className="text-gray-400 group-hover:text-[#00f0ff]">
             <path d="M6 6h2v12H6zm3.5 6l8.5 6V6z" />
           </svg>
         </button>
 
         {/* 뒤로 빨리감기 */}
-        <button className="w-10 h-10 bg-[#1a1a20] border border-[#2a2a35] rounded-full shadow-[0_4px_6px_rgba(0,0,0,0.3)] flex items-center justify-center hover:bg-[#25252b] hover:border-[#00f0ff]/50 transition-all group" title="뒤로 빨리감기">
+        {/* <button className="w-10 h-10 bg-[#1a1a20] border border-[#2a2a35] rounded-full shadow-[0_4px_6px_rgba(0,0,0,0.3)] flex items-center justify-center hover:bg-[#25252b] hover:border-[#00f0ff]/50 transition-all group" title="뒤로 빨리감기">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" className="text-gray-400 group-hover:text-[#00f0ff]">
             <path d="M11 18V6l-8.5 6 8.5 6zm.5-6l8.5 6V6l-8.5 6z" />
           </svg>
-        </button>
+        </button> */}
 
         {/* 뒤로 10초 */}
-        <button className="w-10 h-10 bg-[#1a1a20] border border-[#2a2a35] rounded-full shadow-[0_4px_6px_rgba(0,0,0,0.3)] flex items-center justify-center hover:bg-[#25252b] hover:border-[#00f0ff]/50 transition-all group" title="10초 뒤로">
+        <button onClick={handleBack10} className="w-10 h-10 bg-[#1a1a20] border border-[#2a2a35] rounded-full shadow-[0_4px_6px_rgba(0,0,0,0.3)] flex items-center justify-center hover:bg-[#25252b] hover:border-[#00f0ff]/50 transition-all group" title="10초 뒤로">
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-gray-400 group-hover:text-[#00f0ff]">
             <path d="M3 11a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8" />
             <path d="M3 3v5h5" />
@@ -80,7 +93,7 @@ export function TransportBar() {
         </button>
 
         {/* 앞으로 10초 */}
-        <button className="w-10 h-10 bg-[#1a1a20] border border-[#2a2a35] rounded-full shadow-[0_4px_6px_rgba(0,0,0,0.3)] flex items-center justify-center hover:bg-[#25252b] hover:border-[#00f0ff]/50 transition-all group" title="10초 앞으로">
+        <button onClick={handleForward10} className="w-10 h-10 bg-[#1a1a20] border border-[#2a2a35] rounded-full shadow-[0_4px_6px_rgba(0,0,0,0.3)] flex items-center justify-center hover:bg-[#25252b] hover:border-[#00f0ff]/50 transition-all group" title="10초 앞으로">
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-gray-400 group-hover:text-[#00f0ff]">
             <path d="M21 11a9 9 0 1 1-9-9 9.75 9.75 0 0 1 6.74 2.74L21 8" />
             <path d="M21 3v5h-5" />
@@ -88,11 +101,11 @@ export function TransportBar() {
         </button>
 
         {/* 앞으로 빨리감기 */}
-        <button className="w-10 h-10 bg-[#1a1a20] border border-[#2a2a35] rounded-full shadow-[0_4px_6px_rgba(0,0,0,0.3)] flex items-center justify-center hover:bg-[#25252b] hover:border-[#00f0ff]/50 transition-all group" title="앞으로 빨리감기">
+        {/* <button className="w-10 h-10 bg-[#1a1a20] border border-[#2a2a35] rounded-full shadow-[0_4px_6px_rgba(0,0,0,0.3)] flex items-center justify-center hover:bg-[#25252b] hover:border-[#00f0ff]/50 transition-all group" title="앞으로 빨리감기">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" className="text-gray-400 group-hover:text-[#00f0ff]">
             <path d="M4 6v12l8.5-6L4 6zm7.5 0v12l8.5-6-8.5-6z" />
           </svg>
-        </button>
+        </button> */}
       </div>
     </div>
   );
