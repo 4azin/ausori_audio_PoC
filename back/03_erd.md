@@ -60,6 +60,7 @@ erDiagram
         bigint project_id FK "비정규화 — 조인 없이 프로젝트 단위 조회"
         bigint track_id FK
         bigint sound_asset_id FK
+        bigint ai_event_id FK "nullable, ON DELETE SET NULL — AI 분석 의도 연결"
         float start_time
         float end_time
         float offset "원본 오디오 트림 시작점"
@@ -69,6 +70,18 @@ erDiagram
         boolean is_user_edited
         timestamp created_at
         timestamp updated_at
+    }
+
+    ai_events {
+        bigserial id PK
+        bigint project_id FK "ON DELETE CASCADE"
+        enum group_type "AI가 배정한 원 그룹 (track_group_type)"
+        text description "AI 생성 자연어 설명 — 원본 의도"
+        vector embedding "vector(3072) — description 임베딩"
+        float suggested_start_time "AI 제안 시작 시간 (nullable)"
+        float suggested_end_time "AI 제안 종료 시간 (nullable)"
+        int analysis_batch "재분석 회차 구분 (default 1)"
+        timestamp created_at
     }
 
     project_snapshots {
@@ -135,6 +148,8 @@ erDiagram
     track_groups ||--o{ tracks : "contains"
     tracks ||--o{ track_events : "has"
     track_events }o--|| sound_assets : "uses"
+    projects ||--o{ ai_events : "analyzed into"
+    ai_events ||--o{ track_events : "spawns (nullable)"
     sound_designers ||--o{ sound_assets : "uploads"
     category_major ||--o{ category_mid : "has"
     category_major ||--o{ sound_assets : "classifies"
@@ -218,6 +233,7 @@ erDiagram
 | project_id | BIGINT | FK → projects (비정규화) |
 | track_id | BIGINT | FK → tracks |
 | sound_asset_id | BIGINT | FK → sound_assets, **ON DELETE RESTRICT** (사용 중 에셋 삭제 차단) |
+| ai_event_id | BIGINT | FK → ai_events, **nullable, ON DELETE SET NULL**. AI가 생성한 이벤트는 이 값으로 원 의도(description/embedding)에 역추적. 유저가 수동 추가한 클립은 NULL |
 | start_time | FLOAT | 효과음 시작 시간 (초) |
 | end_time | FLOAT | 효과음 종료 시간 (초) |
 | offset | FLOAT | 원본 오디오 트림 시작점 (초) |
@@ -227,6 +243,27 @@ erDiagram
 | is_user_edited | BOOLEAN | 사용자가 수동 편집했는지 여부 |
 | created_at | TIMESTAMP | 생성일 |
 | updated_at | TIMESTAMP | 수정일 |
+
+### ai_events
+AI 분석이 생성한 이벤트 의도(자연어 + embedding). **append-only 영속 자산**으로, 유저가 track_events에서 삭제·이동·수정해도 여기 데이터는 그대로 남는다.
+
+| 컬럼 | 타입 | 설명 |
+|------|------|------|
+| id | BIGSERIAL | PK |
+| project_id | BIGINT | FK → projects, **ON DELETE CASCADE** |
+| group_type | ENUM | AI가 배정한 원 그룹 (`track_group_type`: ambience/cinematic/dialogue_vo/foley/sfx/music) |
+| description | TEXT | AI가 생성한 자연어 설명 (원 의도) |
+| embedding | VECTOR(3072) | description의 Gemini 임베딩 |
+| suggested_start_time | FLOAT | AI 제안 시작 시간(초), nullable |
+| suggested_end_time | FLOAT | AI 제안 종료 시간(초), nullable |
+| analysis_batch | INT | 재분석 회차. 동일 프로젝트 재분석 시 증가 (기본 1). 과거 분석 이력 비교용 |
+| created_at | TIMESTAMP | 생성일 |
+
+> **유저 편집과의 관계**
+> - 유저가 track_event를 삭제해도 ai_event는 남는다 → "제거된 AI 제안 복원" UX 가능
+> - 유저가 사운드를 다른 걸로 바꿔도 ai_event_id는 유지 → "원 의도 기반 유사 후보 재검색" 가능
+> - 유저가 수동으로 추가한 클립은 `track_events.ai_event_id = NULL`
+> - 재분석이 돌면 새 analysis_batch로 append. 이전 batch의 ai_events는 orphan으로 남아있을 수 있음 (학습 데이터)
 
 ### project_snapshots
 프로젝트 편집 히스토리. 버전별 전체 상태를 JSON으로 저장.
@@ -270,6 +307,7 @@ erDiagram
               "endTime": 15.5,
               "offset": 0.0,
               "volumeOverride": 80,
+              "aiEventId": 42,          // nullable — 유저 수동 추가면 null
               "fadeIn": 0.5,
               "fadeOut": 1.0,
               "isUserEdited": false
@@ -349,6 +387,7 @@ erDiagram
 - **soft delete 미적용**: 초기 MVP에서는 하드 삭제 사용
 - **sound_assets의 designer_id nullable**: 기본 라이브러리(null)와 마켓플레이스 에셋을 동일 테이블로 관리
 - **track_events의 is_user_edited**: AI 결과와 사용자 편집 내역을 구분하여 추후 AI 개선 데이터로 활용 가능
+- **ai_events 분리 / append-only**: AI 분석 결과(description + embedding)는 영속 자산이므로 유저 편집 생애주기(track_events의 live-replace)와 분리. `track_events.ai_event_id`가 역참조. 유저가 클립을 삭제해도 ai_events는 남아 (1) "이 클립과 유사한 다른 사운드"를 원 의도 기반으로 검색하고 (2) 삭제된 AI 제안 복원 UX를 제공하며 (3) 선택/거절 로그를 학습 데이터로 쌓는다
 - **tracks/track_events의 project_id 비정규화**: 에디터 로드 시 3단 조인(track_events → tracks → track_groups → projects) 회피. 읽기 빈도가 압도적인 실시간 에디터 특성에 맞춤
 - **project_snapshots.snapshot 스키마 = load 응답**: 프론트가 받는 구조와 저장 구조를 일치시켜 복원/직렬화 로직 단순화
 - **category 3단계 전부 NOT NULL**: 분류 누락된 에셋이 검색/추천에서 누락되는 케이스 방지

@@ -61,6 +61,7 @@ export function buildMockSnapshot(projectId: number) {
           {
             id: 1,
             soundAssetId: 101,
+            aiEventId: null,
             startTime: 0.0,
             endTime: 15.5,
             offset: 0.0,
@@ -84,6 +85,7 @@ export function buildMockSnapshot(projectId: number) {
           {
             id: 2,
             soundAssetId: 202,
+            aiEventId: null,
             startTime: 3.2,
             endTime: 4.1,
             offset: 0.0,

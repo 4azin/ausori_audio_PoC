@@ -33,9 +33,9 @@ export async function uploadVideo(
   const jobId = uuidv4();
 
   await jobRepository.enqueue({
-    job_id: jobId,
-    project_id: String(projectId),
-    video_path: s3Key,
+    jobId,
+    projectId,
+    videoPath: s3Key,
   });
   await jobRepository.linkProjectJob(projectId, jobId);
 

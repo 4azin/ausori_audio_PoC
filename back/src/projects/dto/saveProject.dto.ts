@@ -24,6 +24,8 @@ const trackSchema = z.object({
 const trackEventSchema = z.object({
   trackIndex: z.number().int().min(0),
   soundAssetId: z.number().int(),
+  /** AI 생성 이벤트면 load 때 받은 값 그대로 round-trip, 유저 수동 추가면 null/생략 */
+  aiEventId: z.number().int().nullable().optional(),
   startTime: z.number().min(0),
   endTime: z.number().min(0),
   offset: z.number().min(0),
