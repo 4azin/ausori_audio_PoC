@@ -33,6 +33,7 @@ print('완료')
 import json
 import os
 import tempfile
+from typing import Any
 
 try:
     import redis_client as rc
@@ -43,6 +44,7 @@ except Exception:
 import analyze_global
 import analyze_local_foley
 import analyze_local_non_foley
+import llm_client
 
 
 def _progress(job_id: str, status: str, pct: int) -> None:
@@ -60,35 +62,130 @@ def run(job: dict) -> dict:
     job_id = job["job_id"]
     video_path = job["video_path"]  # worker가 S3에서 내려받은 로컬 경로
 
-    # 1. 전체 영상 글로벌 분석
-    _progress(job_id, "global_analyzing", 10)
-    global_result = analyze_global.analyze(video_path)
-    _progress(job_id, "global_analyzing", 35)
+    tracker = llm_client.get_tracker()
+    tracker.reset()
 
-    # 2. Foley 분석 + 3. Non-Foley 분석
-    # analyze_all 함수들이 JSON 파일 경로를 받으므로 임시 파일로 연결
-    with tempfile.NamedTemporaryFile(
-        mode="w", suffix=".json", delete=False, encoding="utf-8"
-    ) as f:
-        json.dump(global_result, f, ensure_ascii=False)
-        global_json_path = f.name
+    trace_metadata = {
+        "job_id": job_id,
+        "video_path": video_path,
+        "video_name": os.path.basename(video_path),
+    }
 
-    try:
-        _progress(job_id, "foley_analyzing", 40)
-        foley_result = analyze_local_foley.analyze_all(video_path, global_json_path)
-        _progress(job_id, "foley_analyzing", 65)
+    with llm_client.start_trace(
+        job_id=job_id,
+        name="ai-pipeline",
+        metadata=trace_metadata,
+        input={"job_id": job_id, "video_path": video_path},
+    ) as trace:
 
-        _progress(job_id, "non_foley_analyzing", 70)
-        non_foley_result = analyze_local_non_foley.analyze_all(video_path, global_json_path)
-        _progress(job_id, "non_foley_analyzing", 90)
-    finally:
-        os.unlink(global_json_path)
+        # 1. 전체 영상 글로벌 분석
+        _progress(job_id, "global_analyzing", 10)
+        with llm_client.start_span("global_analyzing"):
+            global_result = analyze_global.analyze(video_path)
+        _progress(job_id, "global_analyzing", 35)
 
-    # 4. 결과 패키징
-    result = _package(global_result, foley_result, non_foley_result)
+        # 2. Foley + 3. Non-Foley
+        with tempfile.NamedTemporaryFile(
+            mode="w", suffix=".json", delete=False, encoding="utf-8"
+        ) as f:
+            json.dump(global_result, f, ensure_ascii=False)
+            global_json_path = f.name
 
-    _progress(job_id, "done", 100)
-    return result
+        try:
+            _progress(job_id, "foley_analyzing", 40)
+            with llm_client.start_span("foley_analyzing"):
+                foley_result = analyze_local_foley.analyze_all(video_path, global_json_path)
+            _progress(job_id, "foley_analyzing", 65)
+
+            _progress(job_id, "non_foley_analyzing", 70)
+            with llm_client.start_span("non_foley_analyzing"):
+                non_foley_result = analyze_local_non_foley.analyze_all(video_path, global_json_path)
+            _progress(job_id, "non_foley_analyzing", 90)
+        finally:
+            os.unlink(global_json_path)
+
+        # 4. 결과 패키징 + 관측 지표 산출
+        result = _package(global_result, foley_result, non_foley_result)
+        metrics = _compute_metrics(global_result, foley_result, non_foley_result)
+        usage = tracker.totals()
+
+        print(tracker.summary())
+        result["llm_usage"] = usage
+        result["metrics"] = metrics
+
+        trace.update(
+            output={"metrics": metrics, "llm_usage": usage["overall"]},
+            metadata={
+                **trace_metadata,
+                "metrics": metrics,
+                "llm_usage_by_stage": usage["by_stage"],
+            },
+        )
+
+        _progress(job_id, "done", 100)
+        return result
+
+
+def _compute_metrics(
+    global_result: dict, foley_result: dict, non_foley_result: dict
+) -> dict:
+    """관측 지표(event 수/트랙별 수/confidence 분포/상세도) 산출."""
+
+    foley_events = [
+        e for s in foley_result.get("scenes", []) for e in s.get("events", [])
+    ]
+    non_foley_entries_by_track: dict[str, list] = {t: [] for t in NON_FOLEY_TRACKS}
+    for s in non_foley_result.get("scenes", []):
+        for entry in s.get("tracks", []):
+            t = entry.get("track", "")
+            if t in non_foley_entries_by_track:
+                non_foley_entries_by_track[t].append(entry)
+
+    def _conf_stats(items: list[dict]) -> dict:
+        vals = [
+            float(it.get("confidence"))
+            for it in items
+            if isinstance(it.get("confidence"), (int, float))
+        ]
+        if not vals:
+            return {"count": 0, "mean": None, "min": None, "max": None}
+        vals_sorted = sorted(vals)
+        mid = len(vals_sorted) // 2
+        p50 = (
+            vals_sorted[mid]
+            if len(vals_sorted) % 2
+            else (vals_sorted[mid - 1] + vals_sorted[mid]) / 2
+        )
+        return {
+            "count": len(vals),
+            "mean": sum(vals) / len(vals),
+            "p50": p50,
+            "min": min(vals),
+            "max": max(vals),
+        }
+
+    def _fill_ratio(items: list[dict], field: str) -> float | None:
+        if not items:
+            return None
+        filled = sum(1 for it in items if it.get(field))
+        return filled / len(items)
+
+    non_foley_all = [e for xs in non_foley_entries_by_track.values() for e in xs]
+
+    metrics: dict[str, Any] = {
+        "scene_count": len(global_result.get("scenes", [])),
+        "foley_event_count": len(foley_events),
+        "foley_confidence": _conf_stats(foley_events),
+        "non_foley_total_count": len(non_foley_all),
+        "non_foley_confidence": _conf_stats(non_foley_all),
+        "non_foley_by_track": {
+            t: len(xs) for t, xs in non_foley_entries_by_track.items()
+        },
+        "non_foley_mood_fill_ratio": _fill_ratio(non_foley_all, "mood"),
+        "non_foley_energy_fill_ratio": _fill_ratio(non_foley_all, "energy"),
+        "non_foley_texture_fill_ratio": _fill_ratio(non_foley_all, "texture"),
+    }
+    return metrics
 
 
 NON_FOLEY_TRACKS = ["ambience", "music", "cinematic", "sfx", "dialogue_vo"]
