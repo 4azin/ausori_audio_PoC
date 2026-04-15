@@ -32,6 +32,7 @@ import analyze_global
 import analyze_local_foley
 import analyze_local_non_foley
 import llm_client
+import taxonomy
 
 
 FOLEY_MAJOR = "Foley"
@@ -169,14 +170,30 @@ def _unpack_job(job) -> tuple[str, int | None, str, None]:
 
 def _to_ai_events(foley_result: dict, non_foley_result: dict) -> list[dict]:
     out: list[dict] = []
+    skipped: list[tuple[str, str, list[str]]] = []  # (track, reason, path)
 
     for scene in foley_result.get("scenes", []):
         for e in scene.get("events", []):
-            out.append(_foley_to_ai_event(e))
+            ev = _foley_to_ai_event(e)
+            if taxonomy.is_valid_category_path(ev["category_path"]):
+                out.append(ev)
+            else:
+                skipped.append(("foley", taxonomy.reason_invalid(ev["category_path"]), ev["category_path"]))
 
     for scene in non_foley_result.get("scenes", []):
         for e in scene.get("tracks", []):
-            out.append(_non_foley_to_ai_event(e))
+            ev = _non_foley_to_ai_event(e)
+            if taxonomy.is_valid_category_path(ev["category_path"]):
+                out.append(ev)
+            else:
+                skipped.append((ev["track"], taxonomy.reason_invalid(ev["category_path"]), ev["category_path"]))
+
+    if skipped:
+        print(f"[taxonomy] {len(skipped)}개 이벤트 스킵 (invalid categoryPath):")
+        for track, reason, path in skipped[:10]:
+            print(f"  - track={track} path={path} reason={reason}")
+        if len(skipped) > 10:
+            print(f"  ... (+{len(skipped) - 10} more)")
 
     out.sort(key=lambda x: x["start_time"])
     return out
