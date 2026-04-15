@@ -236,6 +236,59 @@ def start_span(name: str, metadata: dict[str, Any] | None = None):
 
 
 # ---------------------------------------------------------------------------
+# 프롬프트 로딩 (Langfuse Prompts)
+# ---------------------------------------------------------------------------
+
+@dataclass
+class PromptHandle:
+    """컴파일된 프롬프트 텍스트 + Langfuse 링크용 원본 객체."""
+    text: str
+    name: str
+    version: int | str | None = None
+    label: str | None = None
+    source: str = "local"   # "langfuse" | "local"
+    client_obj: Any = None  # Langfuse TextPromptClient (링크용)
+
+
+def get_prompt(
+    name: str,
+    *,
+    fallback: str,
+    label: str | None = None,
+    variables: dict[str, Any] | None = None,
+) -> PromptHandle:
+    """Langfuse 에서 프롬프트를 가져오되, 실패 시 `fallback` 사용.
+
+    - `label` 지정 시 해당 라벨(예: "production", "staging")을 가져오고,
+      미지정 시 Langfuse 기본(label=production) 동작을 따른다.
+    - `variables` 가 있으면 `.compile(**variables)` 로 치환한다. 없으면 텍스트 그대로.
+    """
+    lf = _get_langfuse()
+    if lf is not None:
+        try:
+            kwargs = {}
+            if label is not None:
+                kwargs["label"] = label
+            prompt_obj = lf.get_prompt(name, **kwargs)
+            text = (
+                prompt_obj.compile(**(variables or {}))
+                if variables
+                else prompt_obj.prompt
+            )
+            return PromptHandle(
+                text=text,
+                name=name,
+                version=getattr(prompt_obj, "version", None),
+                label=label,
+                source="langfuse",
+                client_obj=prompt_obj,
+            )
+        except Exception as e:
+            print(f"[llm] Langfuse get_prompt({name}) 실패, 로컬 fallback: {e}")
+    return PromptHandle(text=fallback, name=name, source="local")
+
+
+# ---------------------------------------------------------------------------
 # 로그 싱크
 # ---------------------------------------------------------------------------
 
@@ -291,11 +344,13 @@ def generate_content(
     contents,
     stage: str,
     scene_id: int | None = None,
-    prompt_name: str | None = None,
-    prompt_version: str | int | None = None,
+    prompt: PromptHandle | None = None,
     **kwargs,
 ):
-    """`client.models.generate_content` 대체 래퍼."""
+    """`client.models.generate_content` 대체 래퍼.
+
+    prompt: Langfuse 프롬프트 핸들. 전달 시 generation ↔ prompt 버전이 링크된다.
+    """
     lf = _get_langfuse()
     summary = _summarize_contents(contents)
     gen_input = {
@@ -305,19 +360,23 @@ def generate_content(
     gen_metadata = {
         "stage": stage,
         "scene_id": scene_id,
-        "prompt_name": prompt_name,
-        "prompt_version": prompt_version,
+        "prompt_name": prompt.name if prompt else None,
+        "prompt_version": prompt.version if prompt else None,
+        "prompt_source": prompt.source if prompt else None,
     }
 
     gen_ctx = None
     if lf is not None:
         try:
-            gen_ctx = lf.start_as_current_generation(
+            gen_kwargs: dict[str, Any] = dict(
                 name=f"gemini:{stage}" + (f":scene{scene_id}" if scene_id is not None else ""),
                 model=model,
                 input=gen_input,
                 metadata=gen_metadata,
             )
+            if prompt is not None and prompt.client_obj is not None:
+                gen_kwargs["prompt"] = prompt.client_obj
+            gen_ctx = lf.start_as_current_generation(**gen_kwargs)
         except Exception:
             gen_ctx = None
 
