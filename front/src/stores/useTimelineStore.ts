@@ -16,6 +16,33 @@ export const useTimelineStore = create<TimelineState>((set) => ({
   videoSeekFn: null,
   registerVideoSeek: (fn) => set({ videoSeekFn: fn }),
 
+  // ── 솔로 ──
+  soloTrackId: null,
+
+  setSoloTrack: (trackId) =>
+    set((state) => {
+      // 이미 솔로 중인 트랙을 다시 누르면 해제
+      const newSoloId = state.soloTrackId === trackId ? null : trackId;
+      if (newSoloId === null) return { soloTrackId: null };
+
+      // 솔로된 트랙의 mute 해제
+      const tracks = state.tracks.map((track) => {
+        if (track.id === newSoloId) return { ...track, mute: false };
+        if (track.subTracks) {
+          const idx = track.subTracks.findIndex((s) => s.id === newSoloId);
+          if (idx !== -1) {
+            const newSubs = track.subTracks.map((s, i) =>
+              i === idx ? { ...s, mute: false } : s
+            );
+            const allMuted = newSubs.every((s) => s.mute);
+            return { ...track, mute: allMuted, subTracks: newSubs };
+          }
+        }
+        return track;
+      });
+      return { soloTrackId: newSoloId, tracks };
+    }),
+
   // ── 트랙 데이터 ──
   tracks: MOCK_TRACKS,
 
@@ -52,24 +79,6 @@ export const useTimelineStore = create<TimelineState>((set) => ({
             sub.id === trackId ? { ...sub, vol } : sub
           );
           if (updatedSubs !== track.subTracks) return { ...track, subTracks: updatedSubs };
-        }
-        return track;
-      }),
-    })),
-
-  // ── 액션: 솔로 토글 ──
-  // S 상태는 독립적으로 관리 (다른 트랙의 M에 영향 없음)
-  toggleTrackSolo: (trackId) =>
-    set((state) => ({
-      tracks: state.tracks.map((track) => {
-        if (track.id === trackId) return { ...track, solo: !track.solo };
-        if (track.subTracks) {
-          const updated = track.subTracks.map((sub) =>
-            sub.id === trackId ? { ...sub, solo: !sub.solo } : sub
-          );
-          if (updated.some((s, i) => s !== track.subTracks![i])) {
-            return { ...track, subTracks: updated };
-          }
         }
         return track;
       }),

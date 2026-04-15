@@ -9,6 +9,8 @@ interface TrackHeaderProps {
   isSubTrack?: boolean;
   isExpanded?: boolean;
   onToggleExpand?: () => void;
+  /** 이 트랙의 서브트랙 중 하나가 현재 솔로 중 */
+  isParentOfSolo?: boolean;
 }
 
 /** vol(0~2) → dB 문자열 */
@@ -25,18 +27,27 @@ function panLabel(pan: number): string {
   return pan < 0 ? `L${pct}` : `R${pct}`;
 }
 
-export function TrackHeader({ track, isSubTrack = false, isExpanded = false, onToggleExpand }: TrackHeaderProps) {
+export function TrackHeader({ track, isSubTrack = false, isExpanded = false, onToggleExpand, isParentOfSolo = false }: TrackHeaderProps) {
   const setTrackPan = useTimelineStore((s) => s.setTrackPan);
   const setTrackVol = useTimelineStore((s) => s.setTrackVol);
-  const toggleTrackSolo = useTimelineStore((s) => s.toggleTrackSolo);
+  const setSoloTrack = useTimelineStore((s) => s.setSoloTrack);
+  const soloTrackId = useTimelineStore((s) => s.soloTrackId);
   const toggleTrackMute = useTimelineStore((s) => s.toggleTrackMute);
 
   const isVideo = track.type === 'video';
-  const showPan = isSubTrack && !isVideo;   // PAN은 서브 트랙에서만
+  const showPan = isSubTrack && !isVideo;
+  // S 버튼: 서브트랙 또는 비디오 메인 트랙에만 표시
+  const showSolo = isSubTrack || isVideo;
+  const isSoloed = soloTrackId === track.id;
   const trackColor = isVideo ? '#b500ff' : track.color;
 
+  // 메인 트랙: isParentOfSolo 시 배경 밝게
   const containerClasses = `h-24 border-b border-[#22222a] p-2 flex flex-col justify-between transition-colors ${
-    isSubTrack ? 'bg-[#0a0a0c] pl-6 hover:bg-[#121215]' : 'hover:bg-[#1a1a20]'
+    isSubTrack
+      ? 'bg-[#0a0a0c] pl-6 hover:bg-[#121215]'
+      : isParentOfSolo
+        ? 'bg-[#252535] hover:bg-[#2c2c3e]'
+        : 'hover:bg-[#1a1a20]'
   }`;
 
   // vol: 0~2 → 슬라이더 0~200
@@ -59,16 +70,18 @@ export function TrackHeader({ track, isSubTrack = false, isExpanded = false, onT
           {track.name}
         </span>
         <div className="flex gap-1 shrink-0">
-          {/* Solo */}
-          <button
-            onClick={() => toggleTrackSolo(track.id)}
-            className={`w-5 h-5 rounded flex items-center justify-center text-[10px] font-bold border transition-all ${
-              track.solo
-                ? 'bg-yellow-400/20 border-yellow-400 text-yellow-300 shadow-[0_0_6px_rgba(250,204,21,0.5)]'
-                : 'bg-[#1a1a20] border-[#2a2a35] text-gray-400 hover:text-yellow-300 hover:border-yellow-400'
-            }`}
-            title="Solo"
-          >S</button>
+          {/* Solo — 서브트랙 또는 비디오 메인 트랙에만 */}
+          {showSolo && (
+            <button
+              onClick={() => setSoloTrack(track.id)}
+              className={`w-5 h-5 rounded flex items-center justify-center text-[10px] font-bold border transition-all ${
+                isSoloed
+                  ? 'bg-yellow-400/20 border-yellow-400 text-yellow-300 shadow-[0_0_6px_rgba(250,204,21,0.5)]'
+                  : 'bg-[#1a1a20] border-[#2a2a35] text-gray-400 hover:text-yellow-300 hover:border-yellow-400'
+              }`}
+              title="Solo"
+            >S</button>
+          )}
           {/* Mute */}
           <button
             onClick={() => toggleTrackMute(track.id)}

@@ -38,8 +38,6 @@ export interface Track {
   pan: number;
   /** 볼륨 값: 0.0 ~ 2.0, 1.0 = 0dB(unity) */
   vol: number;
-  /** 솔로: 켜진 트랙(+소속 서브트랙)만 재생 */
-  solo: boolean;
   /** 뮤트: 해당 트랙 소리 끔 */
   mute: boolean;
 }
@@ -71,10 +69,15 @@ export interface TimelineState {
   videoSeekFn: ((time: number) => void) | null;
   registerVideoSeek: (fn: ((time: number) => void) | null) => void;
 
+  // ── 솔로 (전역 단일 선택) ──
+  /** 현재 솔로 중인 트랙 ID. null이면 솔로 없음 */
+  soloTrackId: string | null;
+  /** 해당 트랙을 솔로 ON (이미 솔로면 해제). 솔로 시 해당 트랙 mute 자동 해제 */
+  setSoloTrack: (trackId: string | null) => void;
+
   // ── 트랙 믹서 ──
   setTrackPan: (trackId: string, pan: number) => void;
   setTrackVol: (trackId: string, vol: number) => void;
-  toggleTrackSolo: (trackId: string) => void;
   toggleTrackMute: (trackId: string) => void;
 
   // ── 액션: 클립 조작 ──
