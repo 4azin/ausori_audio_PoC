@@ -35,7 +35,14 @@ export async function uploadVideo(
   await jobRepository.enqueue({
     jobId,
     projectId,
+    userId,
     videoPath: s3Key,
+    videoMeta: {
+      mimeType: file.mimetype,
+      fileSize: file.size,
+      // durationSeconds 는 업로드 시점에 모름 — AI 워커가 ffmpeg probe 로 채움
+    },
+    requestedAt: new Date().toISOString(),
   });
   await jobRepository.linkProjectJob(projectId, jobId);
 
