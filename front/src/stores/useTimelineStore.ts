@@ -57,6 +57,54 @@ export const useTimelineStore = create<TimelineState>((set) => ({
       }),
     })),
 
+  // ── 액션: 솔로 토글 ──
+  // S 상태는 독립적으로 관리 (다른 트랙의 M에 영향 없음)
+  toggleTrackSolo: (trackId) =>
+    set((state) => ({
+      tracks: state.tracks.map((track) => {
+        if (track.id === trackId) return { ...track, solo: !track.solo };
+        if (track.subTracks) {
+          const updated = track.subTracks.map((sub) =>
+            sub.id === trackId ? { ...sub, solo: !sub.solo } : sub
+          );
+          if (updated.some((s, i) => s !== track.subTracks![i])) {
+            return { ...track, subTracks: updated };
+          }
+        }
+        return track;
+      }),
+    })),
+
+  // ── 액션: 뮤트 토글 ──
+  // 메인 트랙 뮤트 → 모든 서브트랙 동기화
+  // 서브 트랙 뮤트 → 서브트랙 전체가 mute면 메인도 mute, 하나라도 아니면 메인 해제
+  toggleTrackMute: (trackId) =>
+    set((state) => ({
+      tracks: state.tracks.map((track) => {
+        // 메인 트랙
+        if (track.id === trackId) {
+          const newMute = !track.mute;
+          return {
+            ...track,
+            mute: newMute,
+            subTracks: track.subTracks?.map((sub) => ({ ...sub, mute: newMute })),
+          };
+        }
+        // 서브 트랙 탐색
+        if (track.subTracks) {
+          const subIdx = track.subTracks.findIndex((sub) => sub.id === trackId);
+          if (subIdx !== -1) {
+            const newSubs = track.subTracks.map((sub, i) =>
+              i === subIdx ? { ...sub, mute: !sub.mute } : sub
+            );
+            const allMuted = newSubs.every((sub) => sub.mute);
+            return { ...track, mute: allMuted, subTracks: newSubs };
+          }
+        }
+        return track;
+      }),
+    })),
+
   // ── 액션: 클립 이동 ──
   moveClip: (trackId, clipId, newStartTime) =>
     set((state) => ({

@@ -38,6 +38,10 @@ export interface Track {
   pan: number;
   /** 볼륨 값: 0.0 ~ 2.0, 1.0 = 0dB(unity) */
   vol: number;
+  /** 솔로: 켜진 트랙(+소속 서브트랙)만 재생 */
+  solo: boolean;
+  /** 뮤트: 해당 트랙 소리 끔 */
+  mute: boolean;
 }
 
 /** 타임라인 전역 상태 */
@@ -70,6 +74,8 @@ export interface TimelineState {
   // ── 트랙 믹서 ──
   setTrackPan: (trackId: string, pan: number) => void;
   setTrackVol: (trackId: string, vol: number) => void;
+  toggleTrackSolo: (trackId: string) => void;
+  toggleTrackMute: (trackId: string) => void;
 
   // ── 액션: 클립 조작 ──
   /** 클립을 타임라인 위에서 좌우로 이동 (startTime 변경) */

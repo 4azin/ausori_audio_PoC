@@ -28,6 +28,8 @@ function panLabel(pan: number): string {
 export function TrackHeader({ track, isSubTrack = false, isExpanded = false, onToggleExpand }: TrackHeaderProps) {
   const setTrackPan = useTimelineStore((s) => s.setTrackPan);
   const setTrackVol = useTimelineStore((s) => s.setTrackVol);
+  const toggleTrackSolo = useTimelineStore((s) => s.toggleTrackSolo);
+  const toggleTrackMute = useTimelineStore((s) => s.toggleTrackMute);
 
   const isVideo = track.type === 'video';
   const showPan = isSubTrack && !isVideo;   // PAN은 서브 트랙에서만
@@ -57,8 +59,26 @@ export function TrackHeader({ track, isSubTrack = false, isExpanded = false, onT
           {track.name}
         </span>
         <div className="flex gap-1 shrink-0">
-          <button className="w-5 h-5 rounded flex items-center justify-center text-[10px] font-bold bg-[#1a1a20] border border-[#2a2a35] text-gray-400 hover:text-[#00f0ff] hover:border-[#00f0ff] transition-all">S</button>
-          <button className="w-5 h-5 rounded flex items-center justify-center text-[10px] font-bold bg-[#1a1a20] border border-[#2a2a35] text-gray-400 hover:text-[#ff0055] hover:border-[#ff0055] transition-all">M</button>
+          {/* Solo */}
+          <button
+            onClick={() => toggleTrackSolo(track.id)}
+            className={`w-5 h-5 rounded flex items-center justify-center text-[10px] font-bold border transition-all ${
+              track.solo
+                ? 'bg-yellow-400/20 border-yellow-400 text-yellow-300 shadow-[0_0_6px_rgba(250,204,21,0.5)]'
+                : 'bg-[#1a1a20] border-[#2a2a35] text-gray-400 hover:text-yellow-300 hover:border-yellow-400'
+            }`}
+            title="Solo"
+          >S</button>
+          {/* Mute */}
+          <button
+            onClick={() => toggleTrackMute(track.id)}
+            className={`w-5 h-5 rounded flex items-center justify-center text-[10px] font-bold border transition-all ${
+              track.mute
+                ? 'bg-[#ff0055]/20 border-[#ff0055] text-[#ff0055] shadow-[0_0_6px_rgba(255,0,85,0.5)]'
+                : 'bg-[#1a1a20] border-[#2a2a35] text-gray-400 hover:text-[#ff0055] hover:border-[#ff0055]'
+            }`}
+            title="Mute"
+          >M</button>
         </div>
       </div>
 

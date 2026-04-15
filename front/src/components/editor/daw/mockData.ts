@@ -18,7 +18,7 @@ export const MOCK_TRACKS: Track[] = [
     color: '#3a3a45',
     io: 'samplevideo.mp4',
     videoSrc: '/sample/samplevideo.mp4',
-    pan: 0, vol: 1,
+    pan: 0, vol: 1, solo: false, mute: false,
     clips: [],
     subTracks: [],
   },
@@ -28,12 +28,12 @@ export const MOCK_TRACKS: Track[] = [
     type: 'audio',
     color: '#ffc800',
     io: 'Stereo Mix',
-    pan: 0, vol: 1,
+    pan: 0, vol: 1, solo: false, mute: false,
     clips: [],
     subTracks: [
       {
         id: 'dlg-sub-1', name: 'dlg_scene1', type: 'audio', color: '#ffc800', io: 'Stereo Mix',
-        pan: 0, vol: 1,
+        pan: 0, vol: 1, solo: false, mute: false,
         clips: [
           {
             id: 'dlg-1', name: 'dialogue_intro', startTime: 0.5, duration: 4.5,
@@ -47,7 +47,7 @@ export const MOCK_TRACKS: Track[] = [
       },
       {
         id: 'dlg-sub-2', name: 'dlg_scene2', type: 'audio', color: '#ffc800', io: 'Stereo Mix',
-        pan: 0, vol: 1,
+        pan: 0, vol: 1, solo: false, mute: false,
         clips: [
           {
             id: 'dlg-3', name: 'dialogue_close', startTime: 10.5, duration: 5.0,
@@ -67,12 +67,12 @@ export const MOCK_TRACKS: Track[] = [
     type: 'audio',
     color: '#00f0ff',
     io: 'Stereo Mix',
-    pan: 0, vol: 1,
+    pan: 0, vol: 1, solo: false, mute: false,
     clips: [],
     subTracks: [
       {
         id: 'music-sub-1', name: 'bgm_main_loop', type: 'audio', color: '#00f0ff', io: 'Stereo Mix',
-        pan: 0, vol: 1,
+        pan: 0, vol: 1, solo: false, mute: false,
         clips: [
           {
             id: 'music-1', name: 'bgm_intro_pad', startTime: 0, duration: 8.0,
@@ -96,12 +96,12 @@ export const MOCK_TRACKS: Track[] = [
     type: 'audio',
     color: '#b500ff',
     io: 'Stereo Mix',
-    pan: 0, vol: 1,
+    pan: 0, vol: 1, solo: false, mute: false,
     clips: [],
     subTracks: [
       {
         id: 'amb-sub-1', name: 'neon_city_rain', type: 'audio', color: '#b500ff', io: 'Stereo Mix',
-        pan: 0, vol: 1,
+        pan: 0, vol: 1, solo: false, mute: false,
         clips: [
           {
             id: 'amb-1', name: 'city_rain_loop', startTime: 0, duration: 8.5,
@@ -111,7 +111,7 @@ export const MOCK_TRACKS: Track[] = [
       },
       {
         id: 'amb-sub-2', name: 'distant_traffic', type: 'audio', color: '#b500ff', io: 'Stereo Mix',
-        pan: 0, vol: 1,
+        pan: 0, vol: 1, solo: false, mute: false,
         clips: [
           {
             id: 'amb-2', name: 'wind_howl', startTime: 10.0, duration: 10.0,
@@ -127,12 +127,12 @@ export const MOCK_TRACKS: Track[] = [
     type: 'audio',
     color: '#d455ff',
     io: 'Input 1-2',
-    pan: 0, vol: 1,
+    pan: 0, vol: 1, solo: false, mute: false,
     clips: [],
     subTracks: [
       {
         id: 'foley-sub-1', name: 'footsteps', type: 'audio', color: '#d455ff', io: 'Input 1-2',
-        pan: 0, vol: 1,
+        pan: 0, vol: 1, solo: false, mute: false,
         clips: [
           {
             id: 'foley-1', name: 'footstep_01', startTime: 1.2, duration: 1.5,
@@ -156,12 +156,12 @@ export const MOCK_TRACKS: Track[] = [
     type: 'audio',
     color: '#39ff14',
     io: 'Aux 5-6',
-    pan: 0, vol: 1,
+    pan: 0, vol: 1, solo: false, mute: false,
     clips: [],
     subTracks: [
       {
         id: 'sfx-sub-1', name: 'laser_shot', type: 'audio', color: '#39ff14', io: 'Aux 5-6',
-        pan: 0, vol: 1,
+        pan: 0, vol: 1, solo: false, mute: false,
         clips: [
           {
             id: 'sfx-1', name: 'whoosh_01', startTime: 2.0, duration: 1.2,
@@ -175,7 +175,7 @@ export const MOCK_TRACKS: Track[] = [
       },
       {
         id: 'sfx-sub-2', name: 'explosion', type: 'audio', color: '#39ff14', io: 'Aux 5-6',
-        pan: 0, vol: 1,
+        pan: 0, vol: 1, solo: false, mute: false,
         clips: [
           {
             id: 'sfx-3', name: 'explosion_rumble', startTime: 7.8, duration: 4.0,
@@ -195,12 +195,12 @@ export const MOCK_TRACKS: Track[] = [
     type: 'audio',
     color: '#00f0ff',
     io: 'Aux 7-8',
-    pan: 0, vol: 1,
+    pan: 0, vol: 1, solo: false, mute: false,
     clips: [],
     subTracks: [
       {
         id: 'cine-sub-1', name: 'impact_boom', type: 'audio', color: '#00f0ff', io: 'Aux 7-8',
-        pan: 0, vol: 1,
+        pan: 0, vol: 1, solo: false, mute: false,
         clips: [
           {
             id: 'cine-1', name: 'rise_tension', startTime: 0, duration: 4.5,
