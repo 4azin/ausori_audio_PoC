@@ -24,7 +24,7 @@ import llm_client
 
 load_dotenv()
 
-GOOGLE_API_KEY = os.getenv("GOOGLE_API_KEY", "")
+GEMINI_API_VIDEO = os.getenv("GEMINI_API_VIDEO", "")
 GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-3.1-pro-preview")
 
 PROMPT = """\
@@ -278,11 +278,12 @@ def analyze_scene(
         f"scene 길이: {duration:.1f}초\n"
         f"프레임 수: {len(frame_parts)}장 (약 {fps}fps 샘플)\n\n"
     )
-    contents = [context + PROMPT] + frame_parts
+    prompt = llm_client.get_prompt("non_foley_analyzer", fallback=PROMPT)
+    contents = [context + prompt.text] + frame_parts
 
     response = llm_client.generate_content(
         client, model=GEMINI_MODEL, contents=contents,
-        stage="non_foley", scene_id=scene_id,
+        stage="non_foley", scene_id=scene_id, prompt=prompt,
     )
     raw = response.text.strip()
 
@@ -301,10 +302,10 @@ def analyze_all(
     fps: float = 2.0,
     max_frames: int = 30,
 ) -> dict:
-    if not GOOGLE_API_KEY:
-        raise EnvironmentError("GOOGLE_API_KEY가 설정되지 않았습니다. .env 파일을 확인하세요.")
+    if not GEMINI_API_VIDEO:
+        raise EnvironmentError("GEMINI_API_VIDEO가 설정되지 않았습니다. .env 파일을 확인하세요.")
 
-    client = genai.Client(api_key=GOOGLE_API_KEY)
+    client = genai.Client(api_key=GEMINI_API_VIDEO)
 
     global_result = json.loads(Path(result_json_path).read_text(encoding="utf-8"))
     scenes = global_result["scenes"]
