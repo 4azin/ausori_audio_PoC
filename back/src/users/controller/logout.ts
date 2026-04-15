@@ -6,5 +6,5 @@ import { logout as logoutService } from "../service";
 export async function logout(req: Request, res: Response) {
   await logoutService(req.session);
 
-  res.status(200).json({ message: "로그아웃 되었습니다" });
+  res.status(200).json(null);
 }

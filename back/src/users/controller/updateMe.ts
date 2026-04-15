@@ -8,5 +8,8 @@ export async function updateMe(req: Request, res: Response) {
 
   const user = await updateMeService(userId, req.body);
 
-  res.status(200).json(user);
+  res.status(200).json({
+    id: user.id,
+    name: user.name,
+  });
 }
