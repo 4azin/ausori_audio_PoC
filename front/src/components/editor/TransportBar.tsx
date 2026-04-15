@@ -52,11 +52,6 @@ export function TransportBar() {
           </svg>
         </button>
 
-        {/* 일시정지 (빨간 네모) */}
-        <button className="w-14 h-14 bg-[#0a0a0c] border-2 border-[#ff0055] rounded-full shadow-[0_0_15px_rgba(255,0,85,0.4),0_0_30px_rgba(255,0,85,0.2)_inset] flex items-center justify-center hover:bg-[#ff0055]/10 hover:shadow-[0_0_20px_rgba(255,0,85,0.6),0_0_30px_rgba(255,0,85,0.4)_inset] transition-all transform hover:scale-105 mx-1" title="일시정지">
-          <div className="w-5 h-5 bg-[#ff0055] rounded-sm shadow-[0_0_8px_#ff0055]"></div>
-        </button>
-
         {/* 앞으로 10초 */}
         <button className="w-10 h-10 bg-[#1a1a20] border border-[#2a2a35] rounded-full shadow-[0_4px_6px_rgba(0,0,0,0.3)] flex items-center justify-center hover:bg-[#25252b] hover:border-[#00f0ff]/50 transition-all group" title="10초 앞으로">
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-gray-400 group-hover:text-[#00f0ff]">
@@ -72,13 +67,6 @@ export function TransportBar() {
             <path d="M4 6v12l8.5-6L4 6zm7.5 0v12l8.5-6-8.5-6z" />
           </svg>
         </button>
-      </div>
-
-      {/* Large Timecode */}
-      <div className="bg-[#0a0a0c] px-6 py-2 border border-[#22222a] rounded-lg shadow-[0_0_20px_rgba(0,0,0,0.8)_inset] flex flex-col items-center min-w-[220px]">
-        <div className="font-mono text-3xl font-black tracking-[0.1em] text-[#00f0ff] drop-shadow-[0_0_8px_rgba(0,240,255,0.8)]">
-          00:01:23:15
-        </div>
       </div>
     </div>
   );
