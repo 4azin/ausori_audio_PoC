@@ -31,6 +31,7 @@ export function TimelineCanvas() {
   const scrollX = useTimelineStore((s) => s.scrollX);
   const playheadTime = useTimelineStore((s) => s.playheadTime);
   const setPlayheadTime = useTimelineStore((s) => s.setPlayheadTime);
+  const videoSeekFn = useTimelineStore((s) => s.videoSeekFn);
 
   // ── 휠 스크롤 / 줌 ──
   const canvasWidth = rulerWidth || gridWidth;
@@ -42,11 +43,12 @@ export function TimelineCanvas() {
   // ── 파생 값 ──
   const playheadX = playheadTime * pixelsPerSecond - scrollX;
 
-  // ── px 위치 → 시간(초) 변환 후 Store 업데이트 ──
+  // ── px 위치 → 시간(초) 변환 후 Store 업데이트 + 영상 시크 ──
   const updatePlayheadFromX = useCallback((xPx: number) => {
     const time = Math.max(0, (xPx + scrollX) / pixelsPerSecond);
     setPlayheadTime(time);
-  }, [scrollX, pixelsPerSecond, setPlayheadTime]);
+    videoSeekFn?.(time);
+  }, [scrollX, pixelsPerSecond, setPlayheadTime, videoSeekFn]);
 
   // ── Stage 클릭으로 플레이헤드 이동 (빈 영역 = 그리드/룰러 클릭 시만) ──
   const handleStageClick = useCallback((e: import('konva/lib/Node').KonvaEventObject<MouseEvent>) => {

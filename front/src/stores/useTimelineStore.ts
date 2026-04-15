@@ -12,6 +12,10 @@ export const useTimelineStore = create<TimelineState>((set) => ({
   playheadTime: 0,
   isPlaying: false,
 
+  // ── 비디오 시크 ──
+  videoSeekFn: null,
+  registerVideoSeek: (fn) => set({ videoSeekFn: fn }),
+
   // ── 트랙 데이터 ──
   tracks: MOCK_TRACKS,
 

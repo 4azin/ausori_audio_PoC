@@ -59,6 +59,10 @@ export interface TimelineState {
   setPixelsPerSecond: (pps: number) => void;
   setScrollX: (x: number) => void;
 
+  // ── 비디오 시크 ──
+  videoSeekFn: ((time: number) => void) | null;
+  registerVideoSeek: (fn: ((time: number) => void) | null) => void;
+
   // ── 액션: 클립 조작 ──
   /** 클립을 타임라인 위에서 좌우로 이동 (startTime 변경) */
   moveClip: (trackId: string, clipId: string, newStartTime: number) => void;

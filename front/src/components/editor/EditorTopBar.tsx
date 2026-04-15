@@ -16,7 +16,7 @@ export function EditorTopBar() {
       </div>
       <div className="flex items-center gap-4">
         <button className="text-sm font-medium text-gray-400 hover:text-white transition-colors">
-          Upload
+          Save
         </button>
         <Button className="bg-[#00f0ff] hover:bg-[#00c0cc] text-black shadow-[0_0_10px_rgba(0,240,255,0.4)] rounded px-6 py-1.5 h-8 text-sm font-bold tracking-wider">
           EXPORT
