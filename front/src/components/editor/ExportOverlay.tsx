@@ -11,13 +11,13 @@ interface Props {
 const PHASE_LABEL: Record<ExportPhase, string> = {
   preparing: '파일 준비 중',
   mixing:    '오디오 믹싱 중',
-  recording: '영상 렌더링 중',
+  encoding:  '영상 인코딩 중',
 };
 
 const PHASE_SUB: Record<ExportPhase, string> = {
-  preparing: '오디오 트랙을 불러오는 중...',
+  preparing: 'FFmpeg 로드 및 비디오 분석 중...',
   mixing:    '모든 트랙을 혼합하고 있습니다...',
-  recording: '영상을 프레임 단위로 캡처하는 중...',
+  encoding:  '오디오와 영상을 합치는 중...',
 };
 
 export function ExportOverlay({ phase, progress }: Props) {
@@ -71,7 +71,7 @@ export function ExportOverlay({ phase, progress }: Props) {
         </div>
 
         {/* 진행 바 (recording 단계) */}
-        {phase === 'recording' ? (
+        {phase === 'encoding' ? (
           <div className="w-full flex flex-col gap-2">
             <div className="flex justify-between text-xs">
               <span className="text-gray-500">렌더링 진행률</span>
