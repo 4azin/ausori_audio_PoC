@@ -183,25 +183,29 @@ def _to_ai_events(foley_result: dict, non_foley_result: dict) -> list[dict]:
 
 
 def _foley_to_ai_event(e: dict) -> dict:
-    """foley: ms → 초, event_tags(\"Mid:Leaf\") → categoryPath([Foley, Mid, Leaf])."""
-    tags = e.get("event_tags") or []
-    category_path = _foley_category_path(tags[0] if tags else None)
+    """foley 프롬프트 출력 스키마 (초, category_path, tags) 를 AiEvent 로 정규화."""
+    category_path = list(e.get("category_path") or [])
+    if len(category_path) != 3:
+        # 구버전/LLM 누락 방어 — tags 첫 원소 \"Mid:Leaf\" 에서 유도
+        tags_fallback = e.get("tags") or e.get("event_tags") or []
+        category_path = _foley_fallback_category(tags_fallback[0] if tags_fallback else None)
+
     return {
         "track": "foley",
         "description": e.get("description", ""),
         "category_path": category_path,
-        "start_time": _ms_to_sec(e.get("start_time")),
-        "end_time": _ms_to_sec(e.get("end_time")),
-        "peak_time": _ms_to_sec(e.get("peak_time")),
+        "start_time": float(e.get("start_time", 0.0)),
+        "end_time": float(e.get("end_time", 0.0)),
+        "peak_time": float(e["peak_time"]) if e.get("peak_time") is not None else None,
         "mood": [],
         "energy": None,
         "texture": None,
-        "tags": list(tags),
+        "tags": list(e.get("tags") or e.get("event_tags") or []),
         "confidence": float(e.get("confidence", 0.0)),
     }
 
 
-def _foley_category_path(tag: str | None) -> list[str]:
+def _foley_fallback_category(tag: str | None) -> list[str]:
     if not tag or ":" not in tag:
         return [FOLEY_MAJOR, "Unknown", "Unknown"]
     mid, _, leaf = tag.partition(":")
@@ -222,15 +226,6 @@ def _non_foley_to_ai_event(e: dict) -> dict:
         "tags": list(e.get("tags") or []),
         "confidence": float(e.get("confidence", 0.0)),
     }
-
-
-def _ms_to_sec(v) -> float | None:
-    if v is None:
-        return None
-    try:
-        return float(v) / 1000.0
-    except (TypeError, ValueError):
-        return None
 
 
 # ---------------------------------------------------------------------------
