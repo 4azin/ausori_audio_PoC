@@ -1,7 +1,11 @@
 import React from 'react';
 import { Button } from '../ui/Button';
 
-export function EditorTopBar() {
+interface EditorTopBarProps {
+  onExport?: () => void;
+}
+
+export function EditorTopBar({ onExport }: EditorTopBarProps) {
   return (
     <header className="h-14 w-full bg-[#0a0a0c] border-b border-[#22222a] flex items-center justify-between px-6 shrink-0 z-10">
       <div className="flex items-center gap-6">
@@ -18,7 +22,10 @@ export function EditorTopBar() {
         <button className="text-sm font-medium text-gray-400 hover:text-white transition-colors">
           Save
         </button>
-        <Button className="bg-[#00f0ff] hover:bg-[#00c0cc] text-black shadow-[0_0_10px_rgba(0,240,255,0.4)] rounded px-6 py-1.5 h-8 text-sm font-bold tracking-wider">
+        <Button
+          onClick={onExport}
+          className="bg-[#00f0ff] hover:bg-[#00c0cc] text-black shadow-[0_0_10px_rgba(0,240,255,0.4)] rounded px-6 py-1.5 h-8 text-sm font-bold tracking-wider"
+        >
           EXPORT
         </Button>
       </div>
