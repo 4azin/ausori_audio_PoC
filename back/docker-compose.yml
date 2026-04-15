@@ -7,7 +7,7 @@ services:
       - "3000:3000"
     environment:
       - PORT=3000
-      - NODE_ENV=production
+      - NODE_ENV=${NODE_ENV:-production}
       - REDIS_HOST=redis
       - REDIS_PORT=6379
       - REDIS_PASSWORD=${REDIS_PASSWORD}

@@ -19,7 +19,7 @@ CREATE TYPE project_status AS ENUM ('uploading', 'analyzing', 'ready', 'failed')
 CREATE TYPE track_group_type AS ENUM (
     'ambience', 'cinematic', 'dialogue_vo', 'foley', 'sfx', 'music'
 );
-CREATE TYPE sound_format AS ENUM ('mp3', 'ogg', 'wav');
+CREATE TYPE sound_format AS ENUM ('mp3', 'ogg', 'wav', 'aif');
 
 -- ------------------------------------------------------------
 -- users
@@ -115,12 +115,13 @@ CREATE TABLE category_mid (
     UNIQUE (major_id, name)
 );
 
+-- category_sub: sub는 mid에 종속되지 않는 flat 라벨 풀
+-- (같은 이름이 여러 sub_id로 존재 가능 — 예: Metal/Wood/Dark 등 맥락별 변형)
 CREATE TABLE category_sub (
-    id      BIGSERIAL PRIMARY KEY,
-    mid_id  BIGINT NOT NULL REFERENCES category_mid(id) ON DELETE CASCADE,
-    name    VARCHAR(50) NOT NULL,
-    UNIQUE (mid_id, name)
+    id    BIGSERIAL PRIMARY KEY,
+    name  VARCHAR(50) NOT NULL
 );
+CREATE INDEX idx_category_sub_name ON category_sub(name);
 
 -- ------------------------------------------------------------
 -- sound_assets
@@ -141,7 +142,7 @@ CREATE TABLE sound_assets (
     instruments     TEXT[],
     duration        REAL NOT NULL,
     format          sound_format NOT NULL,
-    channels        INT NOT NULL CHECK (channels IN (1, 2)),
+    channels        INT NOT NULL CHECK (channels > 0),
     sample_rate     INT NOT NULL,
     file_size       INT NOT NULL,
     download_count  INT NOT NULL DEFAULT 0,

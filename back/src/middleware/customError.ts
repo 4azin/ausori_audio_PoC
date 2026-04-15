@@ -19,6 +19,11 @@ export const unAuthError = (message = "로그인이 필요합니다") =>
 export const alreadyLoggedInError = (message = "이미 로그인 상태입니다") =>
   new CustomError(403, message, "ALREADY_LOGGED_IN");
 
+/** 403 — 권한 없음 (role 부족) */
+export const forbiddenError = (message = "접근 권한이 없습니다") =>
+  new CustomError(403, message);
+
+/** 404 — 리소스 없음 */
 export const notFoundError = (message = "리소스를 찾을 수 없습니다") =>
   new CustomError(404, message, "NOT_FOUND");
 

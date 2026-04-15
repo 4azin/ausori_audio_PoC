@@ -2,12 +2,14 @@ import express from "express";
 import session from "express-session";
 
 import { connectRedis } from "./config/redis";
+import { initGemini } from "./config/gemini";
 import { startJobConsumer } from "./jobs";
 import { sessionConfig } from "./config/session";
 import { errorHandler } from "./middleware/errorHandler";
 import { responseWrapper } from "./middleware/responseWrapper";
 import userRouter from "./users/user.router";
 import projectRouter from "./projects/project.router";
+import soundRouter from "./sounds/sound.router";
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -32,12 +34,14 @@ app.get("/health", (_req, res) => {
 /** 도메인 라우터 등록 */
 app.use("/api/users", userRouter);
 app.use("/api/projects", projectRouter);
+app.use("/api/sounds", soundRouter);
 
 /** 전역 에러 핸들러 — 반드시 라우터 등록 이후에 배치 */
 app.use(errorHandler);
 
 /** Redis 연결 후 서버 시작 */
 async function bootstrap() {
+  initGemini();
   await connectRedis();
   await startJobConsumer();
 

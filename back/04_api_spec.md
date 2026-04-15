@@ -805,6 +805,50 @@ Google OAuth 로그인 / 신규 회원가입
 
 ---
 
+### GET /api/sounds/:id/similar
+특정 에셋과 유사한 에셋 목록 (벡터 거리순). 에디터에서 클립 클릭 시 대체 후보 탐색용.
+
+**인증 필요**: 로그인 상태
+
+**Query Parameters**
+| 파라미터 | 타입 | 설명 |
+|---------|------|------|
+| level | string | `major` \| `mid` \| `sub` — 필터 기준 카테고리 레벨. 기본값: 소스 에셋의 `sub` |
+| categoryId | number | 해당 level의 카테고리 ID. 기본값: 소스 에셋의 해당 level ID |
+| limit | number | 페이지당 개수 (기본 50, 최대 100) |
+| cursor | string | 이전 응답의 `nextCursor` (페이지네이션) |
+
+클라이언트는 에셋 클릭 시 `level=sub` 기본 호출, 사용자가 탭 전환할 때마다 level/categoryId를 바꿔 재호출한다. 탭 단위 응답은 프론트에서 캐싱.
+
+**Response 200**
+```json
+{
+  "success": true,
+  "data": {
+    "sourceId": 42,
+    "level": "sub",
+    "categoryId": 7,
+    "sounds": [
+      {
+        "id": 101,
+        "fileName": "rain_light_02.wav",
+        "category": { "major": "ambience", "mid": "weather", "sub": "rain" },
+        "mood": ["calm"],
+        "duration": 28.3,
+        "format": "wav",
+        "designer": null,
+        "similarity": 0.87
+      }
+    ],
+    "nextCursor": "eyJkaXN0Ijo..."
+  }
+}
+```
+
+`similarity`는 `1 - cosine_distance` (0~1, 1에 가까울수록 유사). 소스 자기 자신은 응답에서 제외한다.
+
+---
+
 ## 5. 마켓플레이스 (Marketplace)
 
 ### GET /api/marketplace
