@@ -9,6 +9,7 @@ export function TransportBar() {
   const playheadTime = useTimelineStore((s) => s.playheadTime);
   const setPlayheadTime = useTimelineStore((s) => s.setPlayheadTime);
   const videoSeekFn = useTimelineStore((s) => s.videoSeekFn);
+  const audioSeekFn = useTimelineStore((s) => s.audioSeekFn);
   const pixelsPerSecond = useTimelineStore((s) => s.pixelsPerSecond);
   const setPixelsPerSecond = useTimelineStore((s) => s.setPixelsPerSecond);
 
@@ -34,6 +35,7 @@ export function TransportBar() {
     const clamped = Math.max(0, time);
     setPlayheadTime(clamped);
     videoSeekFn?.(clamped);
+    audioSeekFn?.(clamped);
   };
 
   const handleGoToStart = () => seekTo(0);

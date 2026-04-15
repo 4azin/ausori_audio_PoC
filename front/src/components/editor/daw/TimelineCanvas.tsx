@@ -32,6 +32,7 @@ export function TimelineCanvas() {
   const playheadTime = useTimelineStore((s) => s.playheadTime);
   const setPlayheadTime = useTimelineStore((s) => s.setPlayheadTime);
   const videoSeekFn = useTimelineStore((s) => s.videoSeekFn);
+  const audioSeekFn = useTimelineStore((s) => s.audioSeekFn);
 
   // ── 휠 스크롤 / 줌 ──
   const canvasWidth = rulerWidth || gridWidth;
@@ -48,7 +49,8 @@ export function TimelineCanvas() {
     const time = Math.max(0, (xPx + scrollX) / pixelsPerSecond);
     setPlayheadTime(time);
     videoSeekFn?.(time);
-  }, [scrollX, pixelsPerSecond, setPlayheadTime, videoSeekFn]);
+    audioSeekFn?.(time);
+  }, [scrollX, pixelsPerSecond, setPlayheadTime, videoSeekFn, audioSeekFn]);
 
   // ── Stage 클릭으로 플레이헤드 이동 (빈 영역 = 그리드/룰러 클릭 시만) ──
   const handleStageClick = useCallback((e: import('konva/lib/Node').KonvaEventObject<MouseEvent>) => {

@@ -16,6 +16,10 @@ export const useTimelineStore = create<TimelineState>((set) => ({
   videoSeekFn: null,
   registerVideoSeek: (fn) => set({ videoSeekFn: fn }),
 
+  // ── 오디오 시크 ──
+  audioSeekFn: null,
+  registerAudioSeek: (fn) => set({ audioSeekFn: fn }),
+
   // ── 솔로 ──
   soloTrackId: null,
 
@@ -116,40 +120,38 @@ export const useTimelineStore = create<TimelineState>((set) => ({
 
   // ── 액션: 클립 이동 ──
   moveClip: (trackId, clipId, newStartTime) =>
-    set((state) => ({
-      tracks: state.tracks.map((track) => {
-        if (track.id === trackId) {
-          return {
-            ...track,
-            clips: track.clips.map((clip) =>
-              clip.id !== clipId ? clip : { ...clip, startTime: Math.max(0, newStartTime) },
-            ),
-          };
-        }
-        // 메인 트랙이 아니고 서브 트랙이 있을 경우 서브 트랙에서도 탐색
+    set((state) => {
+      const tracks = state.tracks.map((track) => {
+        const applyMove = (clips: typeof track.clips) =>
+          clips.map((clip) => {
+            if (clip.id !== clipId) return clip;
+            const updated = { ...clip, startTime: Math.max(0, newStartTime) };
+            console.log(`[moveClip] ${clip.name}`, {
+              startTime: updated.startTime,
+              duration: updated.duration,
+              sourceOffset: updated.sourceOffset,
+            });
+            return updated;
+          });
+
+        if (track.id === trackId) return { ...track, clips: applyMove(track.clips) };
         if (track.subTracks) {
           return {
             ...track,
-            subTracks: track.subTracks.map((subTrack) =>
-              subTrack.id !== trackId
-                ? subTrack
-                : {
-                    ...subTrack,
-                    clips: subTrack.clips.map((clip) =>
-                      clip.id !== clipId ? clip : { ...clip, startTime: Math.max(0, newStartTime) },
-                    ),
-                  }
+            subTracks: track.subTracks.map((sub) =>
+              sub.id !== trackId ? sub : { ...sub, clips: applyMove(sub.clips) }
             ),
           };
         }
         return track;
-      }),
-    })),
+      });
+      return { tracks };
+    }),
 
   // ── 액션: 왼쪽 트림 ──
   trimClipLeft: (trackId, clipId, deltaSec) =>
-    set((state) => ({
-      tracks: state.tracks.map((track) => {
+    set((state) => {
+      const tracks = state.tracks.map((track) => {
         const processClips = (clips: typeof track.clips) =>
           clips.map((clip) => {
             if (clip.id !== clipId) return clip;
@@ -158,17 +160,21 @@ export const useTimelineStore = create<TimelineState>((set) => ({
             const newDuration = clip.duration - actualDelta;
             if (newDuration < 0.1) return clip;
             if (newOffset >= clip.sourceDuration) return clip;
-            return {
+            const updated = {
               ...clip,
               sourceOffset: newOffset,
               duration: newDuration,
               startTime: clip.startTime + actualDelta,
             };
+            console.log(`[trimClipLeft] ${clip.name}`, {
+              startTime: updated.startTime,
+              duration: updated.duration,
+              sourceOffset: updated.sourceOffset,
+            });
+            return updated;
           });
 
-        if (track.id === trackId) {
-          return { ...track, clips: processClips(track.clips) };
-        }
+        if (track.id === trackId) return { ...track, clips: processClips(track.clips) };
         if (track.subTracks) {
           return {
             ...track,
@@ -178,24 +184,29 @@ export const useTimelineStore = create<TimelineState>((set) => ({
           };
         }
         return track;
-      }),
-    })),
+      });
+      return { tracks };
+    }),
 
   // ── 액션: 오른쪽 트림 ──
   trimClipRight: (trackId, clipId, newDuration) =>
-    set((state) => ({
-      tracks: state.tracks.map((track) => {
+    set((state) => {
+      const tracks = state.tracks.map((track) => {
         const processClips = (clips: typeof track.clips) =>
           clips.map((clip) => {
             if (clip.id !== clipId) return clip;
             const maxDuration = clip.sourceDuration - clip.sourceOffset;
             const clamped = Math.max(0.1, Math.min(newDuration, maxDuration));
-            return { ...clip, duration: clamped };
+            const updated = { ...clip, duration: clamped };
+            console.log(`[trimClipRight] ${clip.name}`, {
+              startTime: updated.startTime,
+              duration: updated.duration,
+              sourceOffset: updated.sourceOffset,
+            });
+            return updated;
           });
 
-        if (track.id === trackId) {
-          return { ...track, clips: processClips(track.clips) };
-        }
+        if (track.id === trackId) return { ...track, clips: processClips(track.clips) };
         if (track.subTracks) {
           return {
             ...track,
@@ -205,8 +216,9 @@ export const useTimelineStore = create<TimelineState>((set) => ({
           };
         }
         return track;
-      }),
-    })),
+      });
+      return { tracks };
+    }),
 
   // ── 뷰 상태 (UI) ──
   expandedTrackIds: {},

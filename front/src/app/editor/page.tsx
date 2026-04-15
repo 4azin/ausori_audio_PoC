@@ -5,8 +5,10 @@ import { VideoPreview } from '@/components/editor/VideoPreview';
 import { AiRecommendations } from '@/components/editor/AiRecommendations';
 import { DawTimeline } from '@/components/editor/daw/DawTimeline';
 import { TransportBar } from '@/components/editor/TransportBar';
+import { useAudioEngine } from '@/hooks/useAudioEngine';
 
 export default function EditorPage() {
+  useAudioEngine();
   return (
     <div className="flex flex-col h-screen overflow-hidden bg-[#0d0d0d] font-sans text-gray-200 selection:bg-[#00f0ff]/30 selection:text-white">
       <EditorTopBar />

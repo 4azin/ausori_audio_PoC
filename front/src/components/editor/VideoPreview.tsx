@@ -26,6 +26,22 @@ export function VideoPreview() {
   const setIsPlaying = useTimelineStore((s) => s.setIsPlaying);
   const registerVideoSeek = useTimelineStore((s) => s.registerVideoSeek);
 
+  // 비디오 트랙 vol/mute 동기화용
+  const videoVol = useTimelineStore((s) => s.tracks.find((t) => t.type === 'video')?.vol ?? 1);
+  const videoMute = useTimelineStore((s) => s.tracks.find((t) => t.type === 'video')?.mute ?? false);
+  const videoTrackId = useTimelineStore((s) => s.tracks.find((t) => t.type === 'video')?.id ?? 'video');
+  const soloTrackId = useTimelineStore((s) => s.soloTrackId);
+
+  // 비디오 트랙 vol/mute → video 엘리먼트 동기화
+  useEffect(() => {
+    const video = videoRef.current;
+    if (!video) return;
+    // soloTrackId가 있고 비디오 트랙이 아니면 강제 음소거
+    const shouldMute = videoMute || (soloTrackId !== null && soloTrackId !== videoTrackId);
+    video.muted = shouldMute;
+    video.volume = Math.min(1, Math.max(0, videoVol));
+  }, [videoVol, videoMute, soloTrackId, videoTrackId]);
+
   // 외부(드래그/클릭)에서 시크할 수 있도록 함수를 store에 등록
   useEffect(() => {
     registerVideoSeek((time: number) => {

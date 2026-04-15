@@ -69,6 +69,10 @@ export interface TimelineState {
   videoSeekFn: ((time: number) => void) | null;
   registerVideoSeek: (fn: ((time: number) => void) | null) => void;
 
+  // ── 오디오 시크 ──
+  audioSeekFn: ((time: number) => void) | null;
+  registerAudioSeek: (fn: ((time: number) => void) | null) => void;
+
   // ── 솔로 (전역 단일 선택) ──
   /** 현재 솔로 중인 트랙 ID. null이면 솔로 없음 */
   soloTrackId: string | null;
