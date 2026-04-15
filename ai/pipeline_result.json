@@ -1,0 +1,956 @@
+{
+  "video_summary": "배우 박보검이 모델로 출연하여 '당근' 앱을 통해 이웃과 소통하고 일상을 나누는 다양한 모습을 담은 광고 영상입니다.",
+  "video_context": "영상은 앱 이름인 '당근'에서 착안한 언어유희로 시작하여, 중고 거래뿐만 아니라 동네 모임, 구인구직, 정보 공유 등 지역 기반 커뮤니티로서의 다양한 기능을 박보검의 일상을 통해 친근하게 보여줍니다. '삶은 당근'이라는 메시지를 통해 당근이 우리 동네 생활의 중심에 있음을 강조합니다.",
+  "foley": [
+    {
+      "event_id": "E1",
+      "peak_time": 2500,
+      "start_time": 2000,
+      "end_time": 3000,
+      "event_category": "foley",
+      "event_tags": [
+        "Food_Drink:Chew"
+      ],
+      "description": "주방에서 작은 당근 조각을 입에 넣고 한 입 베어 무는 씹는 소리.",
+      "confidence": 0.9
+    },
+    {
+      "event_id": "E2",
+      "peak_time": 3200,
+      "start_time": 3000,
+      "end_time": 3800,
+      "event_category": "foley",
+      "event_tags": [
+        "Liquid:Bubble",
+        "Material_Texture:Friction"
+      ],
+      "description": "오일이 발린 구운 당근이 클로즈업되며 표면에서 미세하게 지글거리는 조리 소음 후보.",
+      "confidence": 0.5
+    },
+    {
+      "event_id": "E3",
+      "peak_time": 4500,
+      "start_time": 4000,
+      "end_time": 4800,
+      "event_category": "foley",
+      "event_tags": [
+        "Object:Metal",
+        "Material_Texture:Friction"
+      ],
+      "description": "가스레인지 위 프라이팬에서 조리도구(스파출라)를 이용해 깍둑썰기 된 당근을 볶으며 나는 마찰음.",
+      "confidence": 0.85
+    },
+    {
+      "event_id": "E4",
+      "peak_time": 5200,
+      "start_time": 5000,
+      "end_time": 5800,
+      "event_category": "foley",
+      "event_tags": [
+        "Food_Drink:Chew"
+      ],
+      "description": "얼굴이 클로즈업된 상태에서 당근을 오독오독 씹는 소리.",
+      "confidence": 0.95
+    },
+    {
+      "event_id": "E5",
+      "peak_time": 7500,
+      "start_time": 7200,
+      "end_time": 7800,
+      "event_category": "foley",
+      "event_tags": [
+        "Object:Metal",
+        "Object:Cup_Glass"
+      ],
+      "description": "유리 볼에 담긴 얇게 채 썬 당근(라페)을 포크로 길게 들어 올리며 식기가 부딪히는 소리.",
+      "confidence": 0.75
+    },
+    {
+      "event_id": "E6",
+      "peak_time": 8200,
+      "start_time": 8000,
+      "end_time": 8800,
+      "event_category": "foley",
+      "event_tags": [
+        "Object:Cup_Glass"
+      ],
+      "description": "클립형 유리병에 담긴 절인 당근 화면에서 연출상 발생할 수 있는 유리병 닿는 소리 후보.",
+      "confidence": 0.4
+    },
+    {
+      "event_id": "E7",
+      "peak_time": 9500,
+      "start_time": 9000,
+      "end_time": 9800,
+      "event_category": "foley",
+      "event_tags": [
+        "Food_Drink:Chew",
+        "Object:Metal"
+      ],
+      "description": "주방 바닥에 앉아 포크로 그릇에 담긴 당근 요리를 입에 털어 넣고 씹기 시작하는 소리.",
+      "confidence": 0.85
+    },
+    {
+      "event_id": "E8",
+      "peak_time": 10500,
+      "start_time": 10200,
+      "end_time": 10800,
+      "event_category": "foley",
+      "event_tags": [
+        "Food_Drink:Chew",
+        "Material_Texture:Crack"
+      ],
+      "description": "야외에서 말 옆에 서서 길쭉한 생당근을 크고 강하게 베어 물며 '뚝' 하고 부러지는 소리.",
+      "confidence": 0.98
+    },
+    {
+      "event_id": "E9",
+      "peak_time": 11500,
+      "start_time": 11000,
+      "end_time": 12000,
+      "event_category": "foley",
+      "event_tags": [
+        "Food_Drink:Chew"
+      ],
+      "description": "베어 문 생당근을 입안에서 경쾌하고 아삭하게 연속적으로 씹는 소리.",
+      "confidence": 0.92
+    },
+    {
+      "event_id": "E10",
+      "peak_time": 12500,
+      "start_time": 12200,
+      "end_time": 12800,
+      "event_category": "foley",
+      "event_tags": [
+        "Furniture:Table",
+        "Cloth:Denim"
+      ],
+      "description": "빠르게 화면이 전환된 후, 상체를 숙여 주방 테이블 위에 팔과 몸을 기대며 나는 옷깃 스치는 소리와 테이블 닿는 소리.",
+      "confidence": 0.7
+    },
+    {
+      "event_id": "E1",
+      "peak_time": 14500,
+      "start_time": 14200,
+      "end_time": 14800,
+      "event_category": "foley",
+      "event_tags": [
+        "Liquid:Splash",
+        "Liquid:Bubble"
+      ],
+      "description": "화면이 전환되며 액체가 튀고 기포가 보글거리는 소리.",
+      "confidence": 0.8
+    },
+    {
+      "event_id": "E2",
+      "peak_time": 18300,
+      "start_time": 18000,
+      "end_time": 18700,
+      "event_category": "foley",
+      "event_tags": [
+        "Material_Texture:Friction"
+      ],
+      "description": "스마트폰을 손에 쥐고 화면을 확인하며 손가락이 액정에 닿는 얕은 마찰 소리.",
+      "confidence": 0.6
+    },
+    {
+      "event_id": "E3",
+      "peak_time": 19000,
+      "start_time": 18700,
+      "end_time": 19300,
+      "event_category": "foley",
+      "event_tags": [
+        "Cloth:Jacket",
+        "Material_Texture:Friction"
+      ],
+      "description": "입고 있는 후드 집업의 지퍼를 위로 쭉 올릴 때 나는 금속 마찰과 옷깃 스치는 소리.",
+      "confidence": 0.95
+    },
+    {
+      "event_id": "E4",
+      "peak_time": 19800,
+      "start_time": 19300,
+      "end_time": 20500,
+      "event_category": "foley",
+      "event_tags": [
+        "Cloth:Jacket",
+        "Material_Texture:Friction"
+      ],
+      "description": "갈색 모자를 양손으로 잡아 머리에 깊숙이 눌러쓰면서 모자 원단과 손이 마찰되는 소리.",
+      "confidence": 0.9
+    },
+    {
+      "event_id": "E5",
+      "peak_time": 21500,
+      "start_time": 20600,
+      "end_time": 22500,
+      "event_category": "foley",
+      "event_tags": [
+        "Footsteps:Concrete"
+      ],
+      "description": "건물 외부의 콘크리트 계단을 빠르게 뛰어 내려오면서 운동화 밑창이 바닥에 닿는 발소리.",
+      "confidence": 0.9
+    },
+    {
+      "event_id": "E6",
+      "peak_time": 21200,
+      "start_time": 20600,
+      "end_time": 21800,
+      "event_category": "foley",
+      "event_tags": [
+        "Body:Slap"
+      ],
+      "description": "계단을 내려오며 한 손으로 농구공을 튀기거나 탁 잡아채는 타격 소리.",
+      "confidence": 0.75
+    },
+    {
+      "event_id": "E7",
+      "peak_time": 23500,
+      "start_time": 22500,
+      "end_time": 24400,
+      "event_category": "foley",
+      "event_tags": [
+        "Cloth:Denim",
+        "Material_Texture:Friction"
+      ],
+      "description": "길을 걸으며 바지 뒷주머니에 당근을 꽂아 넣을 때 데님 소재와 마찰하는 소리.",
+      "confidence": 0.85
+    },
+    {
+      "event_id": "E8",
+      "peak_time": 24700,
+      "start_time": 24400,
+      "end_time": 25000,
+      "event_category": "foley",
+      "event_tags": [
+        "Body:Slap",
+        "Material_Texture:Friction"
+      ],
+      "description": "손에 든 농구공을 가볍게 공중으로 던졌다가 다시 양손으로 탁 잡는 소리.",
+      "confidence": 0.8
+    },
+    {
+      "event_id": "E9",
+      "peak_time": 25600,
+      "start_time": 25000,
+      "end_time": 26300,
+      "event_category": "foley",
+      "event_tags": [
+        "Footsteps:Tile"
+      ],
+      "description": "타일 형태의 우레탄 농구장 바닥으로 걸어 들어갈 때 나는 뚜벅거리는 발소리.",
+      "confidence": 0.9
+    },
+    {
+      "event_id": "E10",
+      "peak_time": 29500,
+      "start_time": 28200,
+      "end_time": 30700,
+      "event_category": "foley",
+      "event_tags": [
+        "Footsteps:Tile",
+        "Cloth:Jacket"
+      ],
+      "description": "다수의 이웃들이 농구장 안으로 빠르게 달려 들어오며 발생하는 복합적인 발소리와 옷 스치는 소리.",
+      "confidence": 0.95
+    },
+    {
+      "event_id": "E11",
+      "peak_time": 30000,
+      "start_time": 28500,
+      "end_time": 30700,
+      "event_category": "foley",
+      "event_tags": [
+        "Body:Slap"
+      ],
+      "description": "사람들이 농구공을 손으로 치며 바닥에 튕길 때 나는 둔탁한 가죽 타격음.",
+      "confidence": 0.85
+    },
+    {
+      "event_id": "E12",
+      "peak_time": 31000,
+      "start_time": 30700,
+      "end_time": 31500,
+      "event_category": "foley",
+      "event_tags": [
+        "Footsteps:Tile",
+        "Material_Texture:Friction"
+      ],
+      "description": "농구 경기를 시작하며 급격히 몸을 움직일 때 운동화 밑창이 바닥에 쓸리며 삑삑거리는 마찰음.",
+      "confidence": 0.85
+    },
+    {
+      "event_id": "E1",
+      "peak_time": 35000,
+      "start_time": 33000,
+      "end_time": 36000,
+      "event_category": "foley",
+      "event_tags": [
+        "Cloth:Jacket",
+        "Material_Texture:Friction"
+      ],
+      "description": "후드 집업을 입은 남자가 고개를 숙인 채 스마트폰을 들어 올리며 화면을 볼 때 겉옷이 스치는 소리가 발생한다.",
+      "confidence": 0.8
+    },
+    {
+      "event_id": "E2",
+      "peak_time": 37500,
+      "start_time": 36500,
+      "end_time": 38000,
+      "event_category": "foley",
+      "event_tags": [
+        "Footsteps:Sand"
+      ],
+      "description": "남자가 놀이터 바닥을 걸어와 자전거에 기대어 있는 어린이 뒤로 다가와 멈춰 서는 발소리가 난다.",
+      "confidence": 0.85
+    },
+    {
+      "event_id": "E3",
+      "peak_time": 40500,
+      "start_time": 40000,
+      "end_time": 41500,
+      "event_category": "foley",
+      "event_tags": [
+        "Cloth:Jacket"
+      ],
+      "description": "남자가 판매자인 어린이와 눈을 맞추고 반갑게 한 손을 들어 올려 인사하며 손을 흔들 때 후드 집업 옷깃이 마찰되는 소리가 발생한다.",
+      "confidence": 0.9
+    },
+    {
+      "event_id": "E4",
+      "peak_time": 44000,
+      "start_time": 43500,
+      "end_time": 44500,
+      "event_category": "foley",
+      "event_tags": [
+        "Object:Box",
+        "Cloth:Nylon"
+      ],
+      "description": "등에 피규어 종이 상자를 지고 있는 어린이가 환하게 웃으며 몸을 흔들고 자전거 핸들을 고쳐 잡을 때 가방과 박스가 부딪히며 스치는 소리가 난다.",
+      "confidence": 0.85
+    },
+    {
+      "event_id": "E1",
+      "peak_time": 46000,
+      "start_time": 45500,
+      "end_time": 46500,
+      "event_category": "foley",
+      "event_tags": [
+        "Material_Texture:Friction",
+        "Object:Metal"
+      ],
+      "description": "아이가 자전거를 타고 오다가 멈춰 서면서 타이어와 바닥, 그리고 자전거 부품에서 발생하는 마찰음.",
+      "confidence": 0.65
+    },
+    {
+      "event_id": "E2",
+      "peak_time": 49800,
+      "start_time": 49500,
+      "end_time": 50500,
+      "event_category": "foley",
+      "event_tags": [
+        "Food_Drink:Chew"
+      ],
+      "description": "카페에 앉은 청년이 입을 다문 채로 입안의 무언가를 씹는 소리.",
+      "confidence": 0.85
+    },
+    {
+      "event_id": "E3",
+      "peak_time": 55000,
+      "start_time": 54500,
+      "end_time": 55500,
+      "event_category": "foley",
+      "event_tags": [
+        "Cloth:Denim",
+        "Object:Plastic",
+        "Material_Texture:Friction"
+      ],
+      "description": "어르신이 데님 재질의 앞치마에 부착된 플라스틱 명찰을 양손으로 만지면서 옷감과 스치는 마찰음.",
+      "confidence": 0.95
+    },
+    {
+      "event_id": "E1",
+      "peak_time": 60500,
+      "start_time": 59500,
+      "end_time": 62000,
+      "event_category": "foley",
+      "event_tags": [
+        "Object:Box",
+        "Material_Texture:Friction"
+      ],
+      "description": "소년이 테이블 위의 보드게임 종이 상자를 손으로 만지고 움직일 때 발생하는 약한 마찰음.",
+      "confidence": 0.65
+    },
+    {
+      "event_id": "E2",
+      "peak_time": 65000,
+      "start_time": 64500,
+      "end_time": 65500,
+      "event_category": "foley",
+      "event_tags": [
+        "Object:Wood",
+        "Object:Cup_Glass",
+        "Material_Texture:Friction"
+      ],
+      "description": "박보검이 창밖의 꽃트럭을 발견하고 창가로 급히 다가가며 두 손으로 나무 창틀과 유리를 짚는 순간 나는 타격음과 마찰음.",
+      "confidence": 0.85
+    },
+    {
+      "event_id": "E3",
+      "peak_time": 68500,
+      "start_time": 67000,
+      "end_time": 69500,
+      "event_category": "foley",
+      "event_tags": [
+        "Writing:Keyboard",
+        "Object:Plastic"
+      ],
+      "description": "스마트폰을 손에 쥐고 엄지손가락으로 화면의 가상 키보드를 빠르게 타이핑하여 게시글을 작성할 때 연속적으로 나는 터치음.",
+      "confidence": 0.95
+    },
+    {
+      "event_id": "E4",
+      "peak_time": 70500,
+      "start_time": 70000,
+      "end_time": 71000,
+      "event_category": "foley",
+      "event_tags": [
+        "Object:Bag",
+        "Cloth:Jacket",
+        "Furniture:Chair"
+      ],
+      "description": "자리에서 급하게 일어나며 가방 끈을 잡아채고 몸을 일으킬 때 발생하는 옷깃과 가방의 스치는 소리.",
+      "confidence": 0.8
+    },
+    {
+      "event_id": "E1",
+      "peak_time": 73500,
+      "start_time": 71000,
+      "end_time": 76000,
+      "event_category": "foley",
+      "event_tags": [
+        "Footsteps:Concrete"
+      ],
+      "description": "다양한 연령대의 사람들이 아스팔트 도로 위를 걷고 뛰면서 연속적으로 발생하는 발소리.",
+      "confidence": 0.95
+    },
+    {
+      "event_id": "E2",
+      "peak_time": 72000,
+      "start_time": 71500,
+      "end_time": 72500,
+      "event_category": "foley",
+      "event_tags": [
+        "Material_Texture:Friction"
+      ],
+      "description": "검은 후드티를 입은 남자가 농구공을 손으로 잡고 다루면서 손바닥과 공 표면이 마찰되는 소리.",
+      "confidence": 0.7
+    },
+    {
+      "event_id": "E3",
+      "peak_time": 74000,
+      "start_time": 72500,
+      "end_time": 75500,
+      "event_category": "foley",
+      "event_tags": [
+        "Object:Metal",
+        "Material_Texture:Friction"
+      ],
+      "description": "사람들이 지나가는 사이로 짐이 실린 유모차가 도로 위를 굴러가며 바퀴와 금속 프레임이 흔들리고 마찰되는 소리.",
+      "confidence": 0.85
+    },
+    {
+      "event_id": "E4",
+      "peak_time": 76500,
+      "start_time": 76000,
+      "end_time": 77000,
+      "event_category": "foley",
+      "event_tags": [
+        "Body:Fall",
+        "Furniture:Chair",
+        "Cloth:Jacket"
+      ],
+      "description": "박보검이 뒤로 넘어가듯 갈색 소파(쿠션)에 등을 기대고 눕는 순간 몸무게가 실리며 가구와 옷이 부딪히는 소리.",
+      "confidence": 0.9
+    },
+    {
+      "event_id": "E5",
+      "peak_time": 77000,
+      "start_time": 76500,
+      "end_time": 77500,
+      "event_category": "foley",
+      "event_tags": [
+        "Material_Texture:Friction",
+        "Material_Texture:Crumple"
+      ],
+      "description": "얼굴 가까이 꽃과 당근이 섞인 꽃다발을 가져오며 손으로 줄기 부분을 강하게 쥘 때 식물들이 바스락거리고 마찰되는 소리.",
+      "confidence": 0.88
+    },
+    {
+      "event_id": "E6",
+      "peak_time": 79000,
+      "start_time": 78500,
+      "end_time": 79500,
+      "event_category": "foley",
+      "event_tags": [
+        "Cloth:Jacket"
+      ],
+      "description": "박보검이 소파에 누운 채로 미소 지으며 고개와 몸을 가볍게 뒤척일 때 상의(후드)가 스치며 나는 미세한 옷깃 마찰음.",
+      "confidence": 0.65
+    }
+  ],
+  "ambience": [
+    {
+      "track": "ambience",
+      "start_time": 0.0,
+      "end_time": 10.0,
+      "category_path": [
+        "Ambience",
+        "Interior",
+        "Kitchen"
+      ],
+      "description": "다양한 당근 요리가 등장하는 주방 씬의 자연스럽고 따뜻한 실내 배경음",
+      "confidence": 0.75
+    },
+    {
+      "track": "ambience",
+      "start_time": 10.5,
+      "end_time": 11.5,
+      "category_path": [
+        "Ambience",
+        "Exterior",
+        "Park"
+      ],
+      "description": "말과 함께 생당근을 먹는 짧은 야외 목장 컷에 어울리는 자연 앰비언스",
+      "confidence": 0.65
+    },
+    {
+      "track": "ambience",
+      "start_time": 13.0,
+      "end_time": 20.0,
+      "category_path": [
+        "Ambience",
+        "Interior",
+        "Home"
+      ],
+      "description": "실내 부엌의 평온한 배경 생활음",
+      "confidence": 0.85
+    },
+    {
+      "track": "ambience",
+      "start_time": 20.0,
+      "end_time": 32.0,
+      "category_path": [
+        "Ambience",
+        "Exterior",
+        "Park"
+      ],
+      "description": "계단을 내려와 도착한 야외 공간의 개방감 있는 배경음",
+      "confidence": 0.9
+    },
+    {
+      "track": "ambience",
+      "start_time": 28.0,
+      "end_time": 32.0,
+      "category_path": [
+        "Ambience",
+        "Crowd",
+        "Sports"
+      ],
+      "description": "농구장에서 여러 사람이 모여 뛰며 내는 활기찬 현장 소음",
+      "confidence": 0.85
+    },
+    {
+      "track": "ambience",
+      "start_time": 32.0,
+      "end_time": 45.0,
+      "category_path": [
+        "Ambience",
+        "Exterior",
+        "Park"
+      ],
+      "description": "평화로운 동네 놀이터의 자연스러운 야외 배경음",
+      "confidence": 0.95
+    },
+    {
+      "track": "ambience",
+      "start_time": 45.0,
+      "end_time": 49.5,
+      "category_path": [
+        "Ambience",
+        "Exterior",
+        "Park"
+      ],
+      "description": "장면 초반부 놀이터 야외의 자연스러운 배경음과 아이들 뛰어노는 소리",
+      "confidence": 0.85
+    },
+    {
+      "track": "ambience",
+      "start_time": 49.5,
+      "end_time": 58.0,
+      "category_path": [
+        "Ambience",
+        "Interior",
+        "Cafe"
+      ],
+      "description": "인물들이 머무는 카페 내부의 잔잔하고 따뜻한 실내 공기음 및 약간의 매장 소음",
+      "confidence": 0.92
+    },
+    {
+      "track": "ambience",
+      "start_time": 58.0,
+      "end_time": 71.0,
+      "category_path": [
+        "Ambience",
+        "Interior",
+        "Restaurant"
+      ],
+      "description": "카페 내부의 잔잔한 실내 공명음과 일상적인 배경음",
+      "confidence": 0.9
+    },
+    {
+      "track": "ambience",
+      "start_time": 71.0,
+      "end_time": 79.0,
+      "category_path": [
+        "Ambience",
+        "Urban",
+        "Street"
+      ],
+      "description": "다양한 이웃들이 지나다니는 활기찬 동네의 거리 배경음",
+      "confidence": 0.85
+    }
+  ],
+  "music": [
+    {
+      "track": "music",
+      "start_time": 0.0,
+      "end_time": 13.0,
+      "category_path": [
+        "Music",
+        "BGM",
+        "Acoustic"
+      ],
+      "description": "광고 도입부의 밝고 트렌디한 분위기를 연출하는 경쾌한 어쿠스틱 BGM",
+      "confidence": 0.95
+    },
+    {
+      "track": "music",
+      "start_time": 13.0,
+      "end_time": 32.0,
+      "category_path": [
+        "Music",
+        "BGM",
+        "Electronic"
+      ],
+      "description": "캐주얼하고 트렌디한 무드를 살려주는 리드미컬한 BGM",
+      "confidence": 0.95
+    },
+    {
+      "track": "music",
+      "start_time": 32.0,
+      "end_time": 45.0,
+      "category_path": [
+        "Music",
+        "BGM",
+        "Acoustic"
+      ],
+      "description": "이웃 간의 훈훈한 중고 거래를 나타내는 밝고 유쾌한 어쿠스틱 BGM",
+      "confidence": 0.9
+    },
+    {
+      "track": "music",
+      "start_time": 45.0,
+      "end_time": 58.0,
+      "category_path": [
+        "Music",
+        "BGM",
+        "Acoustic"
+      ],
+      "description": "동네 어르신과의 따뜻한 만남과 당근알바의 긍정적 메시지를 강조하는 감성적인 어쿠스틱 BGM",
+      "confidence": 0.9
+    },
+    {
+      "track": "music",
+      "start_time": 58.0,
+      "end_time": 71.0,
+      "category_path": [
+        "Music",
+        "BGM",
+        "Acoustic"
+      ],
+      "description": "따뜻하고 소소한 동네 일상을 표현하는 밝은 어쿠스틱 BGM",
+      "confidence": 0.85
+    },
+    {
+      "track": "music",
+      "start_time": 71.0,
+      "end_time": 82.0,
+      "category_path": [
+        "Music",
+        "BGM",
+        "Acoustic"
+      ],
+      "description": "당근 브랜드의 따뜻하고 연결된 느낌을 주는 밝은 어쿠스틱 BGM",
+      "confidence": 0.95
+    },
+    {
+      "track": "music",
+      "start_time": 82.0,
+      "end_time": 83.0,
+      "category_path": [
+        "Music",
+        "Jingle",
+        "Outro"
+      ],
+      "description": "당근 로고 등장과 함께 나오는 짧은 시그니처 징글",
+      "confidence": 0.95
+    }
+  ],
+  "cinematic": [
+    {
+      "track": "cinematic",
+      "start_time": 3.0,
+      "end_time": 9.0,
+      "category_path": [
+        "Cinematic",
+        "Transition",
+        "Swoosh"
+      ],
+      "description": "구운 당근, 볶은 당근, 절인 당근 등 요리 클로즈업이 빠르게 교차하는 컷 사이의 리듬감 있는 전환 효과",
+      "confidence": 0.85
+    },
+    {
+      "track": "cinematic",
+      "start_time": 16.5,
+      "end_time": 17.5,
+      "category_path": [
+        "Cinematic",
+        "Transition",
+        "Swoosh"
+      ],
+      "description": "화면을 가득 채우는 타이포그래피 등장 및 스마트폰 화면으로의 전환 효과",
+      "confidence": 0.75
+    },
+    {
+      "track": "cinematic",
+      "start_time": 27.5,
+      "end_time": 28.5,
+      "category_path": [
+        "Cinematic",
+        "Transition",
+        "Swoosh"
+      ],
+      "description": "스마트폰 시점에서 다이나믹한 농구장 앵글로 바뀌는 순간의 화면 전환음",
+      "confidence": 0.8
+    },
+    {
+      "track": "cinematic",
+      "start_time": 36.5,
+      "end_time": 37.5,
+      "category_path": [
+        "Cinematic",
+        "Transition",
+        "Swoosh"
+      ],
+      "description": "성인에서 초등학생으로 앵글과 인물이 전환될 때 짧게 깔리는 우쉬 효과",
+      "confidence": 0.75
+    },
+    {
+      "track": "cinematic",
+      "start_time": 49.0,
+      "end_time": 50.5,
+      "category_path": [
+        "Cinematic",
+        "Transition",
+        "Swoosh"
+      ],
+      "description": "야외에서 실내(카페)로 시점과 공간이 전환될 때 흐름을 자연스럽게 이어주는 부드러운 전환음",
+      "confidence": 0.65
+    },
+    {
+      "track": "cinematic",
+      "start_time": 78.5,
+      "end_time": 79.5,
+      "category_path": [
+        "Cinematic",
+        "Transition",
+        "Swoosh"
+      ],
+      "description": "활기찬 거리에서 인물 클로즈업으로 부드럽게 넘어가는 화면 전환 효과",
+      "confidence": 0.65
+    }
+  ],
+  "sfx": [
+    {
+      "track": "sfx",
+      "start_time": 0.0,
+      "end_time": 1.0,
+      "category_path": [
+        "SFX",
+        "Cartoon",
+        "Pop"
+      ],
+      "description": "'당근' 텍스트 타이틀이 등장할 때 시선을 끄는 가벼운 팝업 효과음",
+      "confidence": 0.8
+    },
+    {
+      "track": "sfx",
+      "start_time": 17.0,
+      "end_time": 18.0,
+      "category_path": [
+        "SFX",
+        "UI",
+        "Notification"
+      ],
+      "description": "농구 모임 게시글을 확인할 때 울리는 경쾌한 앱 알림음",
+      "confidence": 0.8
+    },
+    {
+      "track": "sfx",
+      "start_time": 35.0,
+      "end_time": 36.5,
+      "category_path": [
+        "SFX",
+        "UI",
+        "Pop"
+      ],
+      "description": "화면에 '한정판 피규어 팝니다' 텍스트가 나타날 때의 경쾌한 팝업음",
+      "confidence": 0.85
+    },
+    {
+      "track": "sfx",
+      "start_time": 55.0,
+      "end_time": 56.0,
+      "category_path": [
+        "SFX",
+        "UI",
+        "Notification"
+      ],
+      "description": "앞치마의 당근알바 명찰이 클로즈업될 때 시선을 집중시키는 경쾌한 브랜드 알림음(예: 당근! 소리)",
+      "confidence": 0.95
+    },
+    {
+      "track": "sfx",
+      "start_time": 67.0,
+      "end_time": 69.0,
+      "category_path": [
+        "SFX",
+        "UI",
+        "Notification"
+      ],
+      "description": "앱에 게시글을 작성하고 완료할 때 나는 스마트폰 알림/UI 효과음",
+      "confidence": 0.8
+    }
+  ],
+  "dialogue_vo": [
+    {
+      "track": "dialogue_vo",
+      "start_time": 0.0,
+      "end_time": 13.0,
+      "category_path": [
+        "Dialogue_VO",
+        "Narration",
+        "Storytelling"
+      ],
+      "description": "화면의 요리 이름 자막과 브랜드명 '당근'을 읽어주는 모델의 부드러운 나레이션",
+      "confidence": 0.9
+    },
+    {
+      "track": "dialogue_vo",
+      "start_time": 13.0,
+      "end_time": 16.0,
+      "category_path": [
+        "Dialogue_VO",
+        "Dialogue",
+        "Conversation"
+      ],
+      "description": "카메라를 응시하며 말을 건네는 인물의 대사",
+      "confidence": 0.85
+    },
+    {
+      "track": "dialogue_vo",
+      "start_time": 35.0,
+      "end_time": 38.5,
+      "category_path": [
+        "Dialogue_VO",
+        "Dialogue",
+        "Conversation"
+      ],
+      "description": "앱 화면의 텍스트를 읽거나 서로의 인상착의를 확인하는 대사",
+      "confidence": 0.85
+    },
+    {
+      "track": "dialogue_vo",
+      "start_time": 42.0,
+      "end_time": 45.0,
+      "category_path": [
+        "Dialogue_VO",
+        "Dialogue",
+        "Conversation"
+      ],
+      "description": "거래가 성사되어 피규어를 판매하며 밝게 인사하는 아이의 대사",
+      "confidence": 0.9
+    },
+    {
+      "track": "dialogue_vo",
+      "start_time": 50.0,
+      "end_time": 54.5,
+      "category_path": [
+        "Dialogue_VO",
+        "Dialogue",
+        "Conversation"
+      ],
+      "description": "카페에서 일하는 어르신을 발견하고 신기해하거나 반가워하는 두 등장인물의 대화 및 감탄사",
+      "confidence": 0.82
+    },
+    {
+      "track": "dialogue_vo",
+      "start_time": 55.0,
+      "end_time": 58.0,
+      "category_path": [
+        "Dialogue_VO",
+        "Narration",
+        "Storytelling"
+      ],
+      "description": "당근알바 서비스를 소개하고 동네 어르신의 일자리를 조명하는 신뢰감 있고 따뜻한 톤의 내레이션",
+      "confidence": 0.88
+    },
+    {
+      "track": "dialogue_vo",
+      "start_time": 58.0,
+      "end_time": 63.0,
+      "category_path": [
+        "Dialogue_VO",
+        "Dialogue",
+        "Conversation"
+      ],
+      "description": "박보검과 어린이 간의 다정하고 일상적인 대화",
+      "confidence": 0.88
+    },
+    {
+      "track": "dialogue_vo",
+      "start_time": 73.0,
+      "end_time": 78.0,
+      "category_path": [
+        "Dialogue_VO",
+        "Narration",
+        "Storytelling"
+      ],
+      "description": "'나를 둘러싼 모든 삶은 당근으로 굴러간다' 브랜드 메시지 나레이션",
+      "confidence": 0.95
+    },
+    {
+      "track": "dialogue_vo",
+      "start_time": 79.5,
+      "end_time": 81.5,
+      "category_path": [
+        "Dialogue_VO",
+        "Narration",
+        "Storytelling"
+      ],
+      "description": "'삶은 당근'이라고 말하는 여운 있는 마무리 나레이션",
+      "confidence": 0.9
+    }
+  ]
+}
