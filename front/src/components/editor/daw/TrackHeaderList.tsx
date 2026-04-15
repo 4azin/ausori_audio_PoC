@@ -1,3 +1,5 @@
+'use client';
+
 import React from 'react';
 import { TrackHeader } from './TrackHeader';
 import { useTimelineStore } from '@/stores/useTimelineStore';

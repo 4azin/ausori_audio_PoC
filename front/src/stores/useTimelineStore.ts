@@ -28,6 +28,35 @@ export const useTimelineStore = create<TimelineState>((set) => ({
   setPixelsPerSecond: (pps) => set({ pixelsPerSecond: pps }),
   setScrollX: (x) => set({ scrollX: x }),
 
+  // ── 액션: 트랙 믹서 ──
+  setTrackPan: (trackId, pan) =>
+    set((state) => ({
+      tracks: state.tracks.map((track) => {
+        if (track.id === trackId) return { ...track, pan };
+        if (track.subTracks) {
+          const updatedSubs = track.subTracks.map((sub) =>
+            sub.id === trackId ? { ...sub, pan } : sub
+          );
+          if (updatedSubs !== track.subTracks) return { ...track, subTracks: updatedSubs };
+        }
+        return track;
+      }),
+    })),
+
+  setTrackVol: (trackId, vol) =>
+    set((state) => ({
+      tracks: state.tracks.map((track) => {
+        if (track.id === trackId) return { ...track, vol };
+        if (track.subTracks) {
+          const updatedSubs = track.subTracks.map((sub) =>
+            sub.id === trackId ? { ...sub, vol } : sub
+          );
+          if (updatedSubs !== track.subTracks) return { ...track, subTracks: updatedSubs };
+        }
+        return track;
+      }),
+    })),
+
   // ── 액션: 클립 이동 ──
   moveClip: (trackId, clipId, newStartTime) =>
     set((state) => ({

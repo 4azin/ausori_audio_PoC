@@ -34,6 +34,10 @@ export interface Track {
   subTracks?: Track[];
   /** 비디오 트랙 전용: 프레임 추출할 비디오 소스 URL */
   videoSrc?: string;
+  /** 패닝 값: -1.0(L) ~ 0(C) ~ 1.0(R) */
+  pan: number;
+  /** 볼륨 값: 0.0 ~ 2.0, 1.0 = 0dB(unity) */
+  vol: number;
 }
 
 /** 타임라인 전역 상태 */
@@ -62,6 +66,10 @@ export interface TimelineState {
   // ── 비디오 시크 ──
   videoSeekFn: ((time: number) => void) | null;
   registerVideoSeek: (fn: ((time: number) => void) | null) => void;
+
+  // ── 트랙 믹서 ──
+  setTrackPan: (trackId: string, pan: number) => void;
+  setTrackVol: (trackId: string, vol: number) => void;
 
   // ── 액션: 클립 조작 ──
   /** 클립을 타임라인 위에서 좌우로 이동 (startTime 변경) */
