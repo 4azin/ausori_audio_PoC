@@ -1,37 +1,45 @@
-"""Gemini 호출 가시성 래퍼.
+"""Gemini 호출 가시성 래퍼 + Langfuse 연동.
 
 사용법:
-    from llm_client import generate_content, get_tracker
+    from llm_client import generate_content, get_tracker, start_trace, start_span
 
-    response = generate_content(
-        client, model=GEMINI_MODEL, contents=contents,
-        stage="foley", scene_id=3,
-    )
+    with start_trace(job_id, name="pipeline", metadata={...}) as trace:
+        with start_span("global"):
+            response = generate_content(
+                client, model=GEMINI_MODEL, contents=contents,
+                stage="global",
+            )
+        ...
+        trace.update(output=result_metrics)
 
-    # job 종료 시
-    tracker = get_tracker()
-    print(tracker.summary())
-    tracker.reset()
+환경변수:
+    LANGFUSE_PUBLIC_KEY, LANGFUSE_SECRET_KEY, LANGFUSE_HOST  → 연결 시 활성화
+    LLM_USAGE_LOG  → JSONL 파일 경로 (옵션)
 
-- `response.usage_metadata` 를 파싱해 호출별/누적 토큰·지연·비용을 기록한다.
-- 호출별로 JSONL 한 줄을 stdout 과 (옵션) 파일에 기록한다.
-- 스레드 안전한 단일 전역 tracker 를 제공한다.
+Langfuse 미설정/미설치인 경우 no-op 으로 동작하여 로컬 실행이 항상 가능하다.
 """
 
 from __future__ import annotations
 
+import contextlib
 import json
 import os
 import threading
 import time
-from dataclasses import dataclass, field, asdict
+from dataclasses import asdict, dataclass, field
 from pathlib import Path
 from typing import Any
+
+try:
+    from langfuse import Langfuse
+    _langfuse_available = True
+except Exception:
+    Langfuse = None  # type: ignore[assignment]
+    _langfuse_available = False
 
 
 # ---------------------------------------------------------------------------
 # 가격표 (USD / 1M tokens). 필요 시 조정.
-#   ref: https://ai.google.dev/gemini-api/docs/pricing
 # ---------------------------------------------------------------------------
 PRICING: dict[str, dict[str, float]] = {
     "gemini-3-flash-preview":  {"input": 0.30, "output": 2.50, "cached": 0.075},
@@ -42,7 +50,6 @@ PRICING: dict[str, dict[str, float]] = {
 
 
 def _price_for(model: str) -> dict[str, float]:
-    """정확 매칭 → prefix 매칭 순으로 가격 탐색. 없으면 0."""
     if model in PRICING:
         return PRICING[model]
     for key, val in PRICING.items():
@@ -52,7 +59,7 @@ def _price_for(model: str) -> dict[str, float]:
 
 
 # ---------------------------------------------------------------------------
-# 기록 단위
+# 기록 단위 (in-process 집계 용)
 # ---------------------------------------------------------------------------
 
 @dataclass
@@ -99,7 +106,6 @@ class UsageTracker:
             s["total"] += r.total_tokens
             s["latency_sec"] += r.latency_sec
             s["cost_usd"] += r.cost_usd
-
         agg = {
             "calls": len(recs),
             "prompt": sum(r.prompt_tokens for r in recs),
@@ -138,6 +144,98 @@ def get_tracker() -> UsageTracker:
 
 
 # ---------------------------------------------------------------------------
+# Langfuse 클라이언트 (선택적)
+# ---------------------------------------------------------------------------
+
+_langfuse = None
+
+def _get_langfuse():
+    global _langfuse
+    if _langfuse is not None:
+        return _langfuse
+    if not _langfuse_available:
+        return None
+    pk = os.getenv("LANGFUSE_PUBLIC_KEY")
+    sk = os.getenv("LANGFUSE_SECRET_KEY")
+    host = os.getenv("LANGFUSE_HOST", "http://localhost:3000")
+    if not pk or not sk:
+        return None
+    try:
+        _langfuse = Langfuse(public_key=pk, secret_key=sk, host=host)
+        print(f"[llm] Langfuse 연결됨: {host}")
+    except Exception as e:
+        print(f"[llm] Langfuse 초기화 실패 (계속 진행): {e}")
+        _langfuse = None
+    return _langfuse
+
+
+# ---------------------------------------------------------------------------
+# 트레이스/스팬 컨텍스트 매니저
+# ---------------------------------------------------------------------------
+
+class _TraceHandle:
+    """Langfuse trace 를 감싸는 얇은 핸들. Langfuse 없을 땐 no-op."""
+
+    def __init__(self, span):
+        self._span = span  # langfuse RootSpan context or None
+
+    def update(self, **kwargs) -> None:
+        if self._span is None:
+            return
+        try:
+            self._span.update_trace(**kwargs)
+        except Exception:
+            pass
+
+
+@contextlib.contextmanager
+def start_trace(
+    job_id: str,
+    name: str = "pipeline",
+    metadata: dict[str, Any] | None = None,
+    input: Any = None,
+):
+    """Job 단위 root trace 를 연다. Langfuse 미설정 시 no-op."""
+    lf = _get_langfuse()
+    if lf is None:
+        yield _TraceHandle(None)
+        return
+    ctx = lf.start_as_current_span(
+        name=name,
+        input=input,
+        metadata=metadata or {},
+    )
+    with ctx as span:
+        try:
+            span.update_trace(
+                name=name,
+                session_id=job_id,
+                metadata=metadata or {},
+                input=input,
+            )
+        except Exception:
+            pass
+        try:
+            yield _TraceHandle(span)
+        finally:
+            try:
+                lf.flush()
+            except Exception:
+                pass
+
+
+@contextlib.contextmanager
+def start_span(name: str, metadata: dict[str, Any] | None = None):
+    """Analyzer stage 단위 span. Langfuse 미설정 시 no-op."""
+    lf = _get_langfuse()
+    if lf is None:
+        yield None
+        return
+    with lf.start_as_current_span(name=name, metadata=metadata or {}) as span:
+        yield span
+
+
+# ---------------------------------------------------------------------------
 # 로그 싱크
 # ---------------------------------------------------------------------------
 
@@ -160,6 +258,32 @@ def _emit(record: CallRecord) -> None:
 # 래퍼 호출
 # ---------------------------------------------------------------------------
 
+def _summarize_contents(contents) -> dict[str, Any]:
+    """Gemini contents 에서 프롬프트 텍스트 + 첨부 요약을 뽑는다 (프레임 바이너리 제외)."""
+    text_parts: list[str] = []
+    image_count = 0
+    other_count = 0
+    try:
+        for item in contents:
+            if isinstance(item, str):
+                text_parts.append(item)
+                continue
+            mime = getattr(getattr(item, "inline_data", None), "mime_type", None)
+            if mime is None:
+                mime = getattr(item, "mime_type", None)
+            if mime and str(mime).startswith("image/"):
+                image_count += 1
+            else:
+                other_count += 1
+    except Exception:
+        pass
+    return {
+        "prompt_text": "\n".join(text_parts) if text_parts else None,
+        "image_count": image_count,
+        "other_attachment_count": other_count,
+    }
+
+
 def generate_content(
     client,
     *,
@@ -167,14 +291,51 @@ def generate_content(
     contents,
     stage: str,
     scene_id: int | None = None,
+    prompt_name: str | None = None,
+    prompt_version: str | int | None = None,
     **kwargs,
 ):
-    """`client.models.generate_content` 대체 래퍼.
+    """`client.models.generate_content` 대체 래퍼."""
+    lf = _get_langfuse()
+    summary = _summarize_contents(contents)
+    gen_input = {
+        "prompt": summary["prompt_text"],
+        "image_count": summary["image_count"],
+    }
+    gen_metadata = {
+        "stage": stage,
+        "scene_id": scene_id,
+        "prompt_name": prompt_name,
+        "prompt_version": prompt_version,
+    }
 
-    원 응답 객체를 그대로 돌려주되, usage_metadata 를 파싱해 기록한다.
-    """
+    gen_ctx = None
+    if lf is not None:
+        try:
+            gen_ctx = lf.start_as_current_generation(
+                name=f"gemini:{stage}" + (f":scene{scene_id}" if scene_id is not None else ""),
+                model=model,
+                input=gen_input,
+                metadata=gen_metadata,
+            )
+        except Exception:
+            gen_ctx = None
+
+    if gen_ctx is not None:
+        gen = gen_ctx.__enter__()
+    else:
+        gen = None
+
     t0 = time.perf_counter()
-    response = client.models.generate_content(model=model, contents=contents, **kwargs)
+    try:
+        response = client.models.generate_content(model=model, contents=contents, **kwargs)
+    except Exception as e:
+        if gen_ctx is not None:
+            try:
+                gen.update(level="ERROR", status_message=str(e))
+            finally:
+                gen_ctx.__exit__(type(e), e, e.__traceback__)
+        raise
     latency = time.perf_counter() - t0
 
     um = getattr(response, "usage_metadata", None)
@@ -192,16 +353,32 @@ def generate_content(
     ) / 1_000_000
 
     rec = CallRecord(
-        stage=stage,
-        model=model,
-        prompt_tokens=prompt,
-        output_tokens=output,
-        cached_tokens=cached,
-        total_tokens=total,
-        latency_sec=latency,
-        cost_usd=cost,
+        stage=stage, model=model,
+        prompt_tokens=prompt, output_tokens=output,
+        cached_tokens=cached, total_tokens=total,
+        latency_sec=latency, cost_usd=cost,
         scene_id=scene_id,
     )
     _tracker.add(rec)
     _emit(rec)
+
+    if gen_ctx is not None:
+        try:
+            raw_output = getattr(response, "text", None)
+            gen.update(
+                output=raw_output,
+                usage_details={
+                    "input": prompt,
+                    "output": output,
+                    "cached_input": cached,
+                    "total": total,
+                },
+                cost_details={"total": cost},
+                metadata={**gen_metadata, "latency_sec": latency},
+            )
+        except Exception:
+            pass
+        finally:
+            gen_ctx.__exit__(None, None, None)
+
     return response
