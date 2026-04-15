@@ -1,5 +1,11 @@
 import os
 
+from dotenv import load_dotenv
+
+# config 는 프로젝트 어디서든 가장 먼저 import 되는 경우가 많으므로,
+# analyzer/pipeline/worker 의 load_dotenv() 순서와 무관하게 .env 를 선반영.
+load_dotenv()
+
 # Redis
 REDIS_HOST = os.getenv("REDIS_HOST", "localhost")
 REDIS_PORT = int(os.getenv("REDIS_PORT", "6379"))
