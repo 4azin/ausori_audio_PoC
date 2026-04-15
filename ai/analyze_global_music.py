@@ -17,6 +17,8 @@ from google import genai
 from google.genai import types
 from dotenv import load_dotenv
 
+import llm_client
+
 
 load_dotenv()
 
@@ -245,7 +247,9 @@ def analyze(video_path: str, fps: float = 1.0, max_frames: int = 180) -> dict:
     contents = [context + PROMPT] + frame_parts
 
     print(f"[info] Gemini 호출 중... (model={GEMINI_MODEL})")
-    response = client.models.generate_content(model=GEMINI_MODEL, contents=contents)
+    response = llm_client.generate_content(
+        client, model=GEMINI_MODEL, contents=contents, stage="global_music",
+    )
 
     raw = response.text.strip()
 

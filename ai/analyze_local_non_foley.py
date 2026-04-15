@@ -20,6 +20,8 @@ from google import genai
 from google.genai import types
 from dotenv import load_dotenv
 
+import llm_client
+
 load_dotenv()
 
 GOOGLE_API_KEY = os.getenv("GOOGLE_API_KEY", "")
@@ -278,7 +280,10 @@ def analyze_scene(
     )
     contents = [context + PROMPT] + frame_parts
 
-    response = client.models.generate_content(model=GEMINI_MODEL, contents=contents)
+    response = llm_client.generate_content(
+        client, model=GEMINI_MODEL, contents=contents,
+        stage="non_foley", scene_id=scene_id,
+    )
     raw = response.text.strip()
 
     if raw.startswith("```"):
