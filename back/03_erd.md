@@ -92,8 +92,7 @@ erDiagram
 
     category_sub {
         bigserial id PK
-        bigint mid_id FK "ON DELETE CASCADE"
-        string name "Rain | Thunder | Snow 등 (taxonomy 원본 표기)"
+        string name "Rain | Thunder | Snow 등 (flat 라벨 풀, 이름 중복 허용)"
     }
 
     sound_assets {
@@ -138,7 +137,6 @@ erDiagram
     track_events }o--|| sound_assets : "uses"
     sound_designers ||--o{ sound_assets : "uploads"
     category_major ||--o{ category_mid : "has"
-    category_mid ||--o{ category_sub : "has"
     category_major ||--o{ sound_assets : "classifies"
     category_mid ||--o{ sound_assets : "classifies"
     category_sub ||--o{ sound_assets : "classifies"
@@ -298,8 +296,9 @@ erDiagram
 | | major_id | BIGINT | FK → category_major, **ON DELETE CASCADE** |
 | | name | VARCHAR(50) | 중분류. **UNIQUE (major_id, name)** — 같은 대분류 하위에서만 유일 |
 | category_sub | id | BIGSERIAL | PK |
-| | mid_id | BIGINT | FK → category_mid, **ON DELETE CASCADE** |
-| | name | VARCHAR(50) | 소분류. **UNIQUE (mid_id, name)** — 같은 중분류 하위에서만 유일 |
+| | name | VARCHAR(50) | 소분류. **flat 라벨 풀 — 이름 중복 허용** (예: Metal/Wood/Dark 등 맥락별 변형 id) |
+
+> **category_sub가 flat인 이유**: JSONL 원천 데이터에서 sub는 mid의 child가 아니라 독립적 라벨 축이다. 동일한 sub(예: `Slam` = id 174)이 여러 mid(`Impact`, `UI`, `Explosion` 등) 아래 등장한다. 따라서 `category_sub.mid_id` FK를 두지 않고 전역 id 풀로 관리한다. `sound_assets`에는 `(major_id, mid_id, sub_id)` 3개 FK가 **독립적**으로 붙는다.
 
 > **ID 고정 전략**: `taxonomy.json` 선언 순서대로 INSERT하면 BIGSERIAL이 부여하는 id가 `sound_assets_*.jsonl`의 `major_id / mid_id / sub_id`와 정확히 일치한다 (검증: SFX=5, SFX/UI=45, SFX/Impact/Slam=174). seed 이후 `setval('category_*_id_seq', MAX(id))`로 시퀀스 보정.
 
