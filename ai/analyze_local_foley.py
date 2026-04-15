@@ -16,12 +16,13 @@ from google import genai
 from google.genai import types
 from dotenv import load_dotenv
 
+import config
 import llm_client
 
 load_dotenv()
 
-GEMINI_API_VIDEO = os.getenv("GEMINI_API_VIDEO", "")
-GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-3.1-pro-preview")
+GEMINI_API_VIDEO = config.GEMINI_API_VIDEO
+GEMINI_MODEL = config.GEMINI_MODEL_FOLEY
 
 PROMPT = """\
 당신은 짧게 분할된 영상 scene을 분석하여, 해당 scene 안에서 발생했을 가능성이 있는 Foley 이벤트를 가능한 한 빠짐없이 구조화하는 분석기다.

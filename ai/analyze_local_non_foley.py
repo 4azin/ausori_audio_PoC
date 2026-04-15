@@ -20,12 +20,13 @@ from google import genai
 from google.genai import types
 from dotenv import load_dotenv
 
+import config
 import llm_client
 
 load_dotenv()
 
-GEMINI_API_VIDEO = os.getenv("GEMINI_API_VIDEO", "")
-GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-3.1-pro-preview")
+GEMINI_API_VIDEO = config.GEMINI_API_VIDEO
+GEMINI_MODEL = config.GEMINI_MODEL_NON_FOLEY
 
 PROMPT = """\
 당신은 영상 scene을 분석하여, 해당 scene에 어울리는 Non-Foley 사운드 트랙 배치를 결정하는 전문 사운드 디자이너다.

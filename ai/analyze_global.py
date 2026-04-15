@@ -17,13 +17,14 @@ from google import genai
 from google.genai import types
 from dotenv import load_dotenv
 
+import config
 import llm_client
 
 
 load_dotenv()
 
-GEMINI_API_VIDEO = os.getenv("GEMINI_API_VIDEO", "")
-GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-3-flash-preview")
+GEMINI_API_VIDEO = config.GEMINI_API_VIDEO
+GEMINI_MODEL = config.GEMINI_MODEL_GLOBAL
 
 PROMPT = """\
 당신은 영상 분석가다.
