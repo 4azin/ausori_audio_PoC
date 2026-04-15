@@ -259,3 +259,23 @@ r = redis.Redis(...)
 payload = JobDoneMessage(...).model_dump(by_alias=True)  # ← camelCase JSON
 r.xadd("job:done", {"data": json.dumps(payload, ensure_ascii=False)})
 ```
+
+---
+
+## 부록 B. AI 측 구현 결정 (2026-04-15 추가)
+
+계약 §6 미결 항목 중 AI 워커 내부에서 확정 가능한 부분을 정리한다. 변경/이의 있으면 알려달라.
+
+- **Redis 키 수명**: AI 는 `job:request` / `job:progress` 를 **삭제하지 않는다**. TTL 설정과 소비 후 DEL 은 백엔드 책임. AI 는 SET(progress) / XADD(done) 만 수행.
+- **실패 경로**: 파이프라인 예외 시 `job:progress:{jobId}.status = "failed"` + `message` 에 에러 요약만 남기고 **`job:done` 은 발행하지 않는다** (§5 준수).
+- **`currentStage` 값 고정**:
+  - `preprocessing` — S3 다운로드/프레임 추출
+  - `global_scene_split` — global analyzer (status=`scene_splitting`)
+  - `analyzing_hard` — foley analyzer (status=`analyzing`)
+  - `analyzing_soft` — non-foley analyzer (status=`analyzing`)
+  - `done` — 최종 (status=`done`)
+  - `matching` / `placing` / `refining_timing` 은 백엔드 단계이므로 AI 는 갱신하지 않음.
+- **시간 단위**: foley 포함 모든 이벤트의 `startTime / endTime / peakTime` 은 **초(float)**. 프롬프트 스키마에 단위를 명시하고 파이프라인 후처리에서 변환하지 않는다.
+- **`confidence`**: AI 는 필터링 없이 그대로 방출. 임계치 기반 drop 은 백엔드.
+- **`job:done` consumer group**: `backend` 는 백엔드가 선 생성한다고 가정. AI 는 `XADD job:done * data <json>` 만.
+- **`ai_event_id` / `embedding`**: AI 는 부여/생성하지 않는다 (§4-2, §6 가정 준수).
