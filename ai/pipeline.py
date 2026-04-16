@@ -18,6 +18,7 @@ from __future__ import annotations
 import json
 import os
 import tempfile
+import time
 from datetime import datetime, timezone
 from typing import Any
 
@@ -33,6 +34,7 @@ import analyze_local_foley
 import analyze_local_non_foley
 import llm_client
 import taxonomy
+import video_upload
 
 
 FOLEY_MAJOR = "Foley"
@@ -79,6 +81,9 @@ def run(job, video_path: str | None = None):
         "video_name": os.path.basename(local_video),
     }
 
+    video_upload.reset_upload_total_sec()
+    pipeline_t0 = time.perf_counter()
+
     with llm_client.start_trace(
         job_id=job_id,
         name="ai-pipeline",
@@ -89,8 +94,10 @@ def run(job, video_path: str | None = None):
         _progress(job_id, project_id,
                   status="scene_splitting", progress=10,
                   current_stage="global_scene_split")
+        global_t0 = time.perf_counter()
         with llm_client.start_span("global_analyzing"):
             global_result = analyze_global.analyze(local_video)
+        global_sec = time.perf_counter() - global_t0
         _progress(job_id, project_id,
                   status="scene_splitting", progress=35,
                   current_stage="global_scene_split")
@@ -105,8 +112,10 @@ def run(job, video_path: str | None = None):
             _progress(job_id, project_id,
                       status="analyzing", progress=40,
                       current_stage="analyzing_hard")
+            foley_t0 = time.perf_counter()
             with llm_client.start_span("foley_analyzing"):
                 foley_result = analyze_local_foley.analyze_all(local_video, global_json_path)
+            foley_sec = time.perf_counter() - foley_t0
             _progress(job_id, project_id,
                       status="analyzing", progress=65,
                       current_stage="analyzing_hard")
@@ -114,13 +123,24 @@ def run(job, video_path: str | None = None):
             _progress(job_id, project_id,
                       status="analyzing", progress=70,
                       current_stage="analyzing_soft")
+            non_foley_t0 = time.perf_counter()
             with llm_client.start_span("non_foley_analyzing"):
                 non_foley_result = analyze_local_non_foley.analyze_all(local_video, global_json_path)
+            non_foley_sec = time.perf_counter() - non_foley_t0
             _progress(job_id, project_id,
                       status="analyzing", progress=90,
                       current_stage="analyzing_soft")
         finally:
             os.unlink(global_json_path)
+
+        total_sec = time.perf_counter() - pipeline_t0
+        timing = {
+            "global_sec": round(global_sec, 2),
+            "foley_sec": round(foley_sec, 2),
+            "non_foley_sec": round(non_foley_sec, 2),
+            "upload_total_sec": round(video_upload.get_upload_total_sec(), 2),
+            "total_sec": round(total_sec, 2),
+        }
 
         events = _to_ai_events(foley_result, non_foley_result)
         metrics = _compute_metrics(global_result, events)
@@ -130,15 +150,16 @@ def run(job, video_path: str | None = None):
         done = _build_done_message(
             job_id=job_id, project_id=project_id,
             global_result=global_result, events=events,
-            llm_usage=usage, metrics=metrics,
+            llm_usage=usage, metrics=metrics, timing=timing,
         )
 
         trace.update(
-            output={"metrics": metrics, "llm_usage": usage["overall"]},
+            output={"metrics": metrics, "llm_usage": usage["overall"], "timing": timing},
             metadata={
                 **trace_metadata,
                 "metrics": metrics,
                 "llm_usage_by_stage": usage["by_stage"],
+                "timing": timing,
             },
         )
 
@@ -306,11 +327,14 @@ def _build_done_message(
     events: list[dict],
     llm_usage: dict,
     metrics: dict,
+    timing: dict,
 ):
     telemetry = {
         "sceneCount": metrics["scene_count"],
         "llmUsage": llm_usage["overall"],
         "metrics": metrics,
+        "timing": timing,
+        "inputMethod": "file_api",
     }
     payload = {
         "job_id": job_id,

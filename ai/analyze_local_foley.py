@@ -177,7 +177,11 @@ def analyze_scene(
     duration = end - start
 
     trimmed_path = os.path.join(tmp_dir, f"scene_{scene_id:03d}.mp4")
-    trim_video(video_path, start, end, trimmed_path)
+    with llm_client.start_span(
+        "ffmpeg_trim",
+        metadata={"scene_id": scene_id, "start": start, "end": end, "duration": duration},
+    ):
+        trim_video(video_path, start, end, trimmed_path)
 
     video_file = video_upload.upload_video(client, trimmed_path)
 
