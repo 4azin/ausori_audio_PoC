@@ -3,6 +3,10 @@
 Thumbs.db
 Desktop.ini
 
+# === Claude ===
+CLAUDE.md
+.claude/
+
 # === IDE ===
 .idea/
 .vscode/
@@ -49,5 +53,5 @@ coverage/
 
 # === Sound asset JSONL dumps ===
 # 001만 샘플로 추적, 002~ 는 용량 커서 제외
-sound_assets_*.jsonl
-!sound_assets_001.jsonl
+**/sound_assets_*.jsonl
+!**/sound_assets_001.jsonl

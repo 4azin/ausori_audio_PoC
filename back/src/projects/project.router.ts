@@ -17,6 +17,7 @@ import {
   getStatus,
   listSnapshots,
   restoreSnapshot,
+  getSimilarSounds,
 } from "./controller";
 
 /** Project 라우터 — URL과 핸들러 매핑만 담당 */
@@ -50,6 +51,9 @@ router.post(
 
 /** AI 분석 진행 상태 조회 (폴링용) */
 router.get("/:id/status", getStatus);
+
+/** 유사 에셋 벡터 검색 */
+router.get("/:id/similar-sounds", getSimilarSounds);
 
 /** 스냅샷 히스토리 */
 router.get("/:id/snapshots", listSnapshots);
