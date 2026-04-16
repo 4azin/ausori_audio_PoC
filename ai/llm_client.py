@@ -309,56 +309,6 @@ def _emit(record: CallRecord) -> None:
 
 
 # ---------------------------------------------------------------------------
-# 재시도
-# ---------------------------------------------------------------------------
-
-# 재시도 대상 HTTP 상태. 429 rate limit, 5xx 일시 장애.
-_RETRYABLE_STATUS = {408, 425, 429, 500, 502, 503, 504}
-
-# 환경변수로 조정 가능 (기본: 최대 5회, 2초 → 4 → 8 → 16 → 32)
-_MAX_RETRIES = int(os.getenv("LLM_MAX_RETRIES", "5"))
-_RETRY_BASE_SEC = float(os.getenv("LLM_RETRY_BASE_SEC", "2.0"))
-_RETRY_CAP_SEC = float(os.getenv("LLM_RETRY_CAP_SEC", "60.0"))
-
-
-def _status_of(exc: Exception) -> int | None:
-    for attr in ("code", "status_code", "http_status"):
-        v = getattr(exc, attr, None)
-        if isinstance(v, int):
-            return v
-    return None
-
-
-def _is_retryable(exc: Exception) -> bool:
-    code = _status_of(exc)
-    if code in _RETRYABLE_STATUS:
-        return True
-    msg = str(exc).upper()
-    return any(k in msg for k in ("UNAVAILABLE", "RESOURCE_EXHAUSTED", "DEADLINE_EXCEEDED"))
-
-
-def _call_with_retry(fn, *, stage: str, scene_id: int | None):
-    import random
-    attempt = 0
-    while True:
-        try:
-            return fn()
-        except Exception as e:
-            attempt += 1
-            if attempt > _MAX_RETRIES or not _is_retryable(e):
-                raise
-            delay = min(_RETRY_BASE_SEC * (2 ** (attempt - 1)), _RETRY_CAP_SEC)
-            delay += random.uniform(0, delay * 0.25)  # jitter
-            code = _status_of(e)
-            print(
-                f"[llm] 재시도 {attempt}/{_MAX_RETRIES} stage={stage}"
-                f"{'' if scene_id is None else f' scene={scene_id}'}"
-                f" status={code} after {delay:.1f}s — {e}"
-            )
-            time.sleep(delay)
-
-
-# ---------------------------------------------------------------------------
 # 래퍼 호출
 # ---------------------------------------------------------------------------
 
@@ -438,10 +388,7 @@ def generate_content(
 
     t0 = time.perf_counter()
     try:
-        response = _call_with_retry(
-            lambda: client.models.generate_content(model=model, contents=contents, **kwargs),
-            stage=stage, scene_id=scene_id,
-        )
+        response = client.models.generate_content(model=model, contents=contents, **kwargs)
     except Exception as e:
         if gen_ctx is not None:
             try:
