@@ -69,6 +69,8 @@ services:
       - postgres-data:/var/lib/postgresql/data
       # 최초 기동 시 마이그레이션 SQL 자동 실행 (알파벳 순)
       - ./db/migrations:/docker-entrypoint-initdb.d:ro
+      # JSONL 시드 데이터 (005_seed_sound_assets.sh 에서 참조)
+      - ./db:/seed-data:ro
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
       interval: 10s

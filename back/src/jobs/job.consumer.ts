@@ -81,7 +81,7 @@ async function enrichEvent(ev: AiEventPayload): Promise<EnrichedEvent | null> {
 }
 
 /** AI 완료 결과를 DB에 반영 — 임베딩/검색은 트랜잭션 밖, 쓰기만 트랜잭션 안. */
-async function persistJobResult(payload: JobDoneMessage) {
+export async function persistJobResult(payload: JobDoneMessage) {
   const { jobId, projectId, events } = payload;
 
   // Phase 1: 외부 호출 (Gemini 임베딩 + pgvector 검색). 트랜잭션 밖에서 병렬.
