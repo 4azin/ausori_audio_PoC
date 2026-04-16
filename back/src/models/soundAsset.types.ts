@@ -9,3 +9,19 @@ export interface SoundAsset {
   sampleRate: number;
   fileSize: number;
 }
+
+/** SoundAsset 전체 필드 — 디자이너 CRUD용 */
+export interface SoundAssetFull extends SoundAsset {
+  designerId: number | null;
+  originalPath: string | null;
+  majorId: number;
+  midId: number;
+  subId: number;
+  mood: string[];
+  tags: string[];
+  description: string | null;
+  bpm: number | null;
+  instruments: string[] | null;
+  downloadCount: number;
+  createdAt: Date;
+}

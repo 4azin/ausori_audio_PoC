@@ -8,6 +8,7 @@ import { sessionConfig } from "./config/session";
 import { errorHandler } from "./middleware/errorHandler";
 import { responseWrapper } from "./middleware/responseWrapper";
 import userRouter from "./users/user.router";
+import designerRouter from "./designers/designer.router";
 import projectRouter from "./projects/project.router";
 import soundRouter from "./sounds/sound.router";
 
@@ -33,6 +34,7 @@ app.get("/health", (_req, res) => {
 
 /** 도메인 라우터 등록 */
 app.use("/api/users", userRouter);
+app.use("/api/designers", designerRouter);
 app.use("/api/projects", projectRouter);
 app.use("/api/sounds", soundRouter);
 

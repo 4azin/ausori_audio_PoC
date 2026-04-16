@@ -103,6 +103,15 @@ export const userModel = {
     return rows[0] ? toUser(rows[0]) : undefined;
   },
 
+  /** 유저 role 변경 */
+  async updateRoleById(id: number, role: User["role"]): Promise<User | undefined> {
+    const { rows } = await pool.query(
+      `UPDATE users SET role = $1 WHERE id = $2 RETURNING *`,
+      [role, id],
+    );
+    return rows[0] ? toUser(rows[0]) : undefined;
+  },
+
   /** 유저 삭제 */
   async deleteById(id: number): Promise<boolean> {
     const { rowCount } = await pool.query(
