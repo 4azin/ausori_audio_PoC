@@ -712,6 +712,60 @@ Google OAuth 로그인 / 신규 회원가입
 
 ---
 
+### GET /api/projects/:id/similar-sounds
+에디터에서 클립 클릭 시 대체 후보 탐색 — AI가 배치한 의도(ai_event.embedding)를 기반으로 유사 에셋을 벡터 검색하여 반환한다.
+
+**인증 필요**: 로그인 상태 (본인 프로젝트)
+
+**검색 벡터 결정**
+1. `aiEventId`가 주어지면 → **ai_events.embedding** (원 AI 의도)으로 검색
+2. `aiEventId` 없이 `soundAssetId`만 주어지면 → **sound_assets.embedding** (파일 자체 유사)으로 검색
+
+즉, 가능하면 "원래 AI가 어떤 소리를 원했는가"로 검색하고, 유저가 수동 추가한 클립 등 맥락이 없을 때만 현재 사운드 파일 자체로 검색한다.
+
+**Query Parameters**
+| 파라미터 | 타입 | 필수 | 설명 |
+|---------|------|------|------|
+| aiEventId | number | △ | AI 이벤트 ID. 해당 이벤트의 임베딩으로 검색. `aiEventId` 또는 `soundAssetId` 중 하나는 필수 |
+| soundAssetId | number | △ | 현재 배치된 에셋 ID. `aiEventId` 없을 때 이 에셋의 임베딩으로 검색 |
+| level | string | | `major` \| `mid` \| `sub` — 필터 기준 카테고리 레벨. 기본값: 소스 에셋의 `sub` |
+| categoryId | number | | 해당 level의 카테고리 ID. 기본값: 소스 에셋의 해당 level ID |
+| limit | number | | 반환 개수 (기본 100, 최대 200) |
+| offset | number | | 건너뛸 개수 (기본 0) |
+
+클라이언트는 클립 클릭 시 `aiEventId`를 함께 넘기고 `level=sub` 기본 호출, 사용자가 탭 전환할 때마다 level/categoryId를 바꿔 재호출한다.
+
+**Response 200**
+```json
+{
+  "success": true,
+  "data": {
+    "queryVector": "ai_event",
+    "aiEventId": 42,
+    "level": "sub",
+    "categoryId": 7,
+    "sounds": [
+      {
+        "id": 101,
+        "fileName": "rain_light_02.wav",
+        "category": { "major": "ambience", "mid": "weather", "sub": "rain" },
+        "mood": ["calm"],
+        "tags": ["rain", "light"],
+        "duration": 28.3,
+        "format": "wav",
+        "similarity": 0.87
+      }
+    ]
+  }
+}
+```
+
+- `similarity`는 `1 - cosine_distance` (0~1, 1에 가까울수록 유사). 소스 자기 자신은 응답에서 제외한다.
+- `queryVector`는 `"ai_event" | "sound_asset"` — 어떤 벡터로 검색했는지 명시.
+- `aiEventId`는 ai_event 기반 검색 시에만 포함.
+
+---
+
 ### GET /api/projects/:id/analyses
 프로젝트의 AI 분석 리포트 목록 — `project_analyses` 기반. 재분석 회차가 여러 번 돌면 내림차순(batch desc)으로 나온다.
 
@@ -871,59 +925,6 @@ Google OAuth 로그인 / 신규 회원가입
 `originalPath`와 `embedding`은 internal metadata이므로 응답에 포함하지 않는다.
 
 ---
-
-### GET /api/sounds/:id/similar
-특정 에셋과 유사한 에셋 목록 (벡터 거리순). 에디터에서 클립 클릭 시 대체 후보 탐색용.
-
-**인증 필요**: 로그인 상태
-
-**검색 벡터 우선순위**
-1. `trackEventId`가 주어지고 해당 track_event가 `ai_event_id`를 가지면 → **ai_events.embedding** (원 AI 의도)
-2. 그 외 → `:id` 에셋의 **sound_assets.embedding** (파일 자체 유사)
-
-즉, 가능하면 "원래 AI가 어떤 소리를 원했는가"로 검색하고, 유저가 수동 추가한 클립 등 맥락이 없을 때만 현재 사운드 파일 자체로 검색한다.
-
-**Query Parameters**
-| 파라미터 | 타입 | 설명 |
-|---------|------|------|
-| trackEventId | number | 현재 클립의 `track_events.id`. 있으면 ai_event 기반 검색 시도 (선택) |
-| level | string | `major` \| `mid` \| `sub` — 필터 기준 카테고리 레벨. 기본값: 소스 에셋의 `sub` |
-| categoryId | number | 해당 level의 카테고리 ID. 기본값: 소스 에셋의 해당 level ID |
-| limit | number | 페이지당 개수 (기본 50, 최대 100) |
-| cursor | string | 이전 응답의 `nextCursor` (페이지네이션) |
-
-클라이언트는 에셋 클릭 시 `trackEventId`를 함께 넘기고 `level=sub` 기본 호출, 사용자가 탭 전환할 때마다 level/categoryId를 바꿔 재호출한다. 탭 단위 응답은 프론트에서 캐싱.
-
-**Response 200**
-```json
-{
-  "success": true,
-  "data": {
-    "sourceId": 42,
-    "queryVector": "ai_event",
-    "aiEventId": 42,
-    "level": "sub",
-    "categoryId": 7,
-    "sounds": [
-      {
-        "id": 101,
-        "fileName": "rain_light_02.wav",
-        "category": { "major": "ambience", "mid": "weather", "sub": "rain" },
-        "mood": ["calm"],
-        "duration": 28.3,
-        "format": "wav",
-        "designer": null,
-        "similarity": 0.87
-      }
-    ],
-    "nextCursor": "eyJkaXN0Ijo..."
-  }
-}
-```
-
-- `similarity`는 `1 - cosine_distance` (0~1, 1에 가까울수록 유사). 소스 자기 자신은 응답에서 제외한다.
-- `queryVector`는 `"ai_event" | "sound_asset"` — 어떤 벡터로 검색했는지 명시. 프론트 배지/툴팁에 노출 가능.
-- `aiEventId`는 ai_event 기반 검색 시에만 포함.
 
 ---
 

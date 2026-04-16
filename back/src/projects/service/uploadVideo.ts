@@ -46,5 +46,5 @@ export async function uploadVideo(
   });
   await jobRepository.linkProjectJob(projectId, jobId);
 
-  return { jobId, s3Key };
+  return { projectId, jobId, status: "analyzing" as const, s3Key };
 }

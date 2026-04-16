@@ -7,7 +7,7 @@ export async function getProjectById(req: Request, res: Response) {
   const id = Number(req.params.id);
   const userId = req.session.userId!;
 
-  const project = await getProjectByIdService(id, userId);
+  const { userId: _uid, ...project } = await getProjectByIdService(id, userId);
 
   res.status(200).json(project);
 }

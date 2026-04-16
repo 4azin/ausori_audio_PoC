@@ -8,5 +8,6 @@ export async function getProjects(
 ) {
   const offset = (page - 1) * limit;
   const { rows, total } = await projectModel.findAllByUserId(userId, { limit, offset });
-  return { projects: rows, total, page, limit };
+  const projects = rows.map(({ userId: _uid, originalVideoUrl: _url, ...rest }) => rest);
+  return { projects, total, page, limit };
 }

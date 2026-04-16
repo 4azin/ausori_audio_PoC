@@ -9,3 +9,4 @@ export { uploadVideo } from "./uploadVideo";
 export { getStatus } from "./getStatus";
 export { listSnapshots } from "./listSnapshots";
 export { restoreSnapshot } from "./restoreSnapshot";
+export { getSimilarSounds } from "./getSimilarSounds";
