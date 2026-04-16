@@ -17,11 +17,11 @@ import tempfile
 from pathlib import Path
 
 from google import genai
-from google.genai import types
 from dotenv import load_dotenv
 
 import config
 import llm_client
+import video_upload
 
 load_dotenv()
 
@@ -34,7 +34,7 @@ PROMPT = """\
 
 [입력]
 입력으로는 2가지가 주어진다.
-1. 잘린 scene 영상 (프레임 시퀀스)
+1. 잘린 scene 영상
 2. 해당 scene에 대한 메타 정보 (아래 [Scene 메타데이터] 참고)
 
 [분석 대상 트랙]
@@ -215,37 +215,6 @@ def trim_video(video_path: str, start_sec: float, end_sec: float, out_path: str)
     subprocess.run(cmd, capture_output=True, check=True)
 
 
-def extract_frames(video_path: str, fps: float, max_frames: int, out_dir: str) -> list[str]:
-    """ffmpeg으로 프레임 추출. 추출된 이미지 경로 목록 반환."""
-    pattern = os.path.join(out_dir, "frame_%04d.jpg")
-    cmd = [
-        "ffmpeg", "-y",
-        "-i", video_path,
-        "-vf", f"fps={fps},scale=768:-2",
-        "-q:v", "3",
-        pattern,
-    ]
-    subprocess.run(cmd, capture_output=True, check=True)
-
-    frames = sorted(Path(out_dir).glob("frame_*.jpg"))
-
-    if len(frames) > max_frames:
-        step = len(frames) / max_frames
-        frames = [frames[int(i * step)] for i in range(max_frames)]
-
-    return [str(f) for f in frames]
-
-
-def load_frames_as_parts(frame_paths: list[str]) -> list:
-    """프레임 파일을 bytes로 읽어 Gemini Part 목록으로 반환 (Windows 파일 락 방지)."""
-    parts = []
-    for p in frame_paths:
-        with open(p, "rb") as f:
-            data = f.read()
-        parts.append(types.Part.from_bytes(data=data, mime_type="image/jpeg"))
-    return parts
-
-
 # ---------------------------------------------------------------------------
 # 분석
 # ---------------------------------------------------------------------------
@@ -254,11 +223,9 @@ def analyze_scene(
     client: genai.Client,
     video_path: str,
     scene: dict,
-    fps: float,
-    max_frames: int,
     tmp_dir: str,
 ) -> dict:
-    """scene 하나를 잘라 Gemini로 Non-Foley 트랙 배치 분석. scene 결과 dict 반환."""
+    """scene 하나를 잘라 Gemini File API로 업로드 후 Non-Foley 트랙 배치 분석."""
     scene_id = scene["scene_id"]
     start = scene["start_time"]
     end = scene["end_time"]
@@ -267,25 +234,25 @@ def analyze_scene(
     trimmed_path = os.path.join(tmp_dir, f"scene_{scene_id:03d}.mp4")
     trim_video(video_path, start, end, trimmed_path)
 
-    frame_dir = os.path.join(tmp_dir, f"frames_{scene_id:03d}")
-    os.makedirs(frame_dir, exist_ok=True)
-    frame_paths = extract_frames(trimmed_path, fps, max_frames, frame_dir)
-    frame_parts = load_frames_as_parts(frame_paths)
+    video_file = video_upload.upload_video(client, trimmed_path)
 
-    scene_meta_str = json.dumps(scene, ensure_ascii=False, indent=2)
-    context = (
-        f"[Scene 메타데이터]\n{scene_meta_str}\n\n"
-        f"[영상 정보]\n"
-        f"scene 길이: {duration:.1f}초\n"
-        f"프레임 수: {len(frame_parts)}장 (약 {fps}fps 샘플)\n\n"
-    )
-    prompt = llm_client.get_prompt("non_foley_analyzer", fallback=PROMPT)
-    contents = [context + prompt.text] + frame_parts
+    try:
+        scene_meta_str = json.dumps(scene, ensure_ascii=False, indent=2)
+        context = (
+            f"[Scene 메타데이터]\n{scene_meta_str}\n\n"
+            f"[영상 정보]\n"
+            f"scene 길이: {duration:.1f}초\n\n"
+        )
+        prompt = llm_client.get_prompt("non_foley_analyzer", fallback=PROMPT)
+        contents = [context + prompt.text, video_file]
 
-    response = llm_client.generate_content(
-        client, model=GEMINI_MODEL, contents=contents,
-        stage="non_foley", scene_id=scene_id, prompt=prompt,
-    )
+        response = llm_client.generate_content(
+            client, model=GEMINI_MODEL, contents=contents,
+            stage="non_foley", scene_id=scene_id, prompt=prompt,
+        )
+    finally:
+        video_upload.delete_video(client, video_file)
+
     raw = response.text.strip()
 
     if raw.startswith("```"):
@@ -300,8 +267,6 @@ def analyze_scene(
 def analyze_all(
     video_path: str,
     result_json_path: str,
-    fps: float = 2.0,
-    max_frames: int = 30,
 ) -> dict:
     if not GEMINI_API_VIDEO:
         raise EnvironmentError("GEMINI_API_VIDEO가 설정되지 않았습니다. .env 파일을 확인하세요.")
@@ -318,7 +283,7 @@ def analyze_all(
             scene_id = scene["scene_id"]
             print(f"[scene {scene_id}/{len(scenes)}] {scene['start_time']}s ~ {scene['end_time']}s 분석 중...")
             try:
-                result = analyze_scene(client, video_path, scene, fps, max_frames, tmp)
+                result = analyze_scene(client, video_path, scene, tmp)
 
                 # 상대 시간(초) → 절대 시간(초) 변환
                 scene_start_sec = scene["start_time"]
@@ -343,12 +308,10 @@ def main() -> None:
     parser = argparse.ArgumentParser(description="scene별 Non-Foley 트랙 배치 분석 (Gemini)")
     parser.add_argument("video", help="원본 영상 파일 경로")
     parser.add_argument("--result", required=True, help="글로벌 분석 결과 JSON 경로 (result.json)")
-    parser.add_argument("--fps", type=float, default=2.0, help="프레임 추출 fps (기본: 2.0)")
-    parser.add_argument("--max-frames", type=int, default=60, help="scene당 최대 프레임 수 (기본: 30)")
     parser.add_argument("--out", help="결과를 저장할 JSON 파일 경로 (생략 시 stdout 출력)")
     args = parser.parse_args()
 
-    result = analyze_all(args.video, args.result, fps=args.fps, max_frames=args.max_frames)
+    result = analyze_all(args.video, args.result)
 
     output = json.dumps(result, ensure_ascii=False, indent=2)
 
