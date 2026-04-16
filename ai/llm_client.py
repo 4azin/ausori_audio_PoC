@@ -313,14 +313,23 @@ def _emit(record: CallRecord) -> None:
 # ---------------------------------------------------------------------------
 
 def _summarize_contents(contents) -> dict[str, Any]:
-    """Gemini contents 에서 프롬프트 텍스트 + 첨부 요약을 뽑는다 (프레임 바이너리 제외)."""
+    """Gemini contents 에서 프롬프트 텍스트 + 첨부 요약을 뽑는다 (바이너리 제외)."""
     text_parts: list[str] = []
     image_count = 0
+    video_count = 0
     other_count = 0
     try:
         for item in contents:
             if isinstance(item, str):
                 text_parts.append(item)
+                continue
+            # File API 업로드 객체 (name 속성으로 판별)
+            if hasattr(item, "name") and hasattr(item, "state"):
+                mime = getattr(item, "mime_type", "") or ""
+                if str(mime).startswith("video/"):
+                    video_count += 1
+                else:
+                    other_count += 1
                 continue
             mime = getattr(getattr(item, "inline_data", None), "mime_type", None)
             if mime is None:
@@ -334,6 +343,7 @@ def _summarize_contents(contents) -> dict[str, Any]:
     return {
         "prompt_text": "\n".join(text_parts) if text_parts else None,
         "image_count": image_count,
+        "video_count": video_count,
         "other_attachment_count": other_count,
     }
 
@@ -357,6 +367,7 @@ def generate_content(
     gen_input = {
         "prompt": summary["prompt_text"],
         "image_count": summary["image_count"],
+        "video_count": summary["video_count"],
     }
     gen_metadata = {
         "stage": stage,
