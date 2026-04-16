@@ -10,15 +10,14 @@ import argparse
 import json
 import os
 import subprocess
-import tempfile
 from pathlib import Path
 
 from google import genai
-from google.genai import types
 from dotenv import load_dotenv
 
 import config
 import llm_client
+import video_upload
 
 
 load_dotenv()
@@ -28,7 +27,7 @@ GEMINI_MODEL = config.GEMINI_MODEL_GLOBAL
 
 PROMPT = """\
 당신은 영상 분석가다.
-입력된 영상 전체를 먼저 이해한 뒤, 영상의 흐름을 기준으로 장면(scene)을 분할하라.
+입력된 영상 전체를 처음부터 끝까지 시청한 뒤, 영상의 흐름을 기준으로 장면(scene)을 분할하라.
 
 [목표]
 - 전체 영상을 여러 개의 scene으로 나눈다.
@@ -99,33 +98,11 @@ def get_duration(video_path: str) -> float:
     return float(result.stdout.strip())
 
 
-def extract_frames(video_path: str, fps: float, max_frames: int, out_dir: str) -> list[str]:
-    """ffmpeg으로 프레임 추출. 추출된 이미지 경로 목록 반환."""
-    pattern = os.path.join(out_dir, "frame_%04d.jpg")
-    cmd = [
-        "ffmpeg", "-y",
-        "-i", video_path,
-        "-vf", f"fps={fps},scale=768:-2",
-        "-q:v", "3",
-        pattern,
-    ]
-    subprocess.run(cmd, capture_output=True, check=True)
-
-    frames = sorted(Path(out_dir).glob("frame_*.jpg"))
-
-    # max_frames 초과 시 균등 샘플링
-    if len(frames) > max_frames:
-        step = len(frames) / max_frames
-        frames = [frames[int(i * step)] for i in range(max_frames)]
-
-    return [str(f) for f in frames]
-
-
 # ---------------------------------------------------------------------------
 # 분석
 # ---------------------------------------------------------------------------
 
-def analyze(video_path: str, fps: float = 1.0, max_frames: int = 180) -> dict:
+def analyze(video_path: str) -> dict:
     if not GEMINI_API_VIDEO:
         raise EnvironmentError("GEMINI_API_VIDEO가 설정되지 않았습니다. .env 파일을 확인하세요.")
 
@@ -134,30 +111,22 @@ def analyze(video_path: str, fps: float = 1.0, max_frames: int = 180) -> dict:
     duration = get_duration(video_path)
     print(f"[info] 영상 길이: {duration:.1f}초")
 
-    with tempfile.TemporaryDirectory(ignore_cleanup_errors=True) as tmp:
-        print(f"[info] 프레임 추출 중... (fps={fps}, max={max_frames})")
-        frame_paths = extract_frames(video_path, fps, max_frames, tmp)
-        print(f"[info] 추출된 프레임: {len(frame_paths)}장")
+    video_file = video_upload.upload_video(client, video_path)
 
-        # Windows 파일 락 방지: bytes로 미리 읽고 파일 핸들 닫기
-        frame_parts = []
-        for p in frame_paths:
-            with open(p, "rb") as f:
-                data = f.read()
-            frame_parts.append(types.Part.from_bytes(data=data, mime_type="image/jpeg"))
+    try:
+        context = f"[영상 정보]\n총 길이: {duration:.1f}초\n\n"
+        prompt = llm_client.get_prompt("global_analyzer", fallback=PROMPT)
+        contents = [context + prompt.text, video_file]
 
-    context = f"[영상 정보]\n총 길이: {duration:.1f}초\n프레임 수: {len(frame_parts)}장 (약 {fps}fps 샘플)\n\n"
-    prompt = llm_client.get_prompt("global_analyzer", fallback=PROMPT)
-    contents = [context + prompt.text] + frame_parts
-
-    print(f"[info] Gemini 호출 중... (model={GEMINI_MODEL}, prompt={prompt.name}@{prompt.version}/{prompt.source})")
-    response = llm_client.generate_content(
-        client, model=GEMINI_MODEL, contents=contents, stage="global", prompt=prompt,
-    )
+        print(f"[info] Gemini 호출 중... (model={GEMINI_MODEL}, prompt={prompt.name}@{prompt.version}/{prompt.source})")
+        response = llm_client.generate_content(
+            client, model=GEMINI_MODEL, contents=contents, stage="global", prompt=prompt,
+        )
+    finally:
+        video_upload.delete_video(client, video_file)
 
     raw = response.text.strip()
 
-    # 혹시 코드블록이 섞여 들어온 경우 제거
     if raw.startswith("```"):
         raw = raw.split("```")[1]
         if raw.startswith("json"):
@@ -174,12 +143,10 @@ def analyze(video_path: str, fps: float = 1.0, max_frames: int = 180) -> dict:
 def main() -> None:
     parser = argparse.ArgumentParser(description="영상 글로벌 분석 (Gemini)")
     parser.add_argument("video", help="분석할 영상 파일 경로")
-    parser.add_argument("--fps", type=float, default=1.0, help="프레임 추출 fps (기본: 1.0)")
-    parser.add_argument("--max-frames", type=int, default=180, help="최대 프레임 수 (기본: 180)")
     parser.add_argument("--out", help="결과를 저장할 JSON 파일 경로 (생략 시 stdout 출력)")
     args = parser.parse_args()
 
-    result = analyze(args.video, fps=args.fps, max_frames=args.max_frames)
+    result = analyze(args.video)
 
     output = json.dumps(result, ensure_ascii=False, indent=2)
 
