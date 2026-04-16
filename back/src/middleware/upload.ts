@@ -6,6 +6,7 @@ import { badRequestError } from "./customError";
 const MIME_PRESETS = {
   video: ["video/mp4", "video/webm", "video/quicktime"],
   image: ["image/jpeg", "image/png", "image/webp", "image/gif"],
+  audio: ["audio/mpeg", "audio/ogg", "audio/wav", "audio/aiff"],
 } as const;
 
 type PresetKey = keyof typeof MIME_PRESETS;

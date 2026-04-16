@@ -2,7 +2,7 @@ import { z } from "zod/v4";
 
 /** 트랙 그룹 저장 스키마 */
 const trackGroupSchema = z.object({
-  type: z.enum(["dialogue", "music", "background", "foley", "sfx", "cinematic"]),
+  type: z.enum(["ambience", "cinematic", "dialogue_vo", "foley", "sfx", "music"]),
   volume: z.number().int().min(0).max(100),
   isMuted: z.boolean(),
   isSolo: z.boolean(),
@@ -16,6 +16,7 @@ const trackSchema = z.object({
   volume: z.number().int().min(0).max(100),
   pan: z.number().int().min(-100).max(100),
   isMuted: z.boolean(),
+  isSolo: z.boolean().default(false),
   order: z.number().int().min(0),
 });
 
@@ -23,6 +24,8 @@ const trackSchema = z.object({
 const trackEventSchema = z.object({
   trackIndex: z.number().int().min(0),
   soundAssetId: z.number().int(),
+  /** AI 생성 이벤트면 load 때 받은 값 그대로 round-trip, 유저 수동 추가면 null/생략 */
+  aiEventId: z.number().int().nullable().optional(),
   startTime: z.number().min(0),
   endTime: z.number().min(0),
   offset: z.number().min(0),

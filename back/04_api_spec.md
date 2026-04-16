@@ -78,7 +78,7 @@ Google OAuth 로그인 / 신규 회원가입
 {
   "success": true,
   "data": {
-    "id": "uuid",
+    "id": 1,
     "email": "user@gmail.com",
     "name": "홍길동",
     "profileImageUrl": "https://...",
@@ -112,7 +112,7 @@ Google OAuth 로그인 / 신규 회원가입
 {
   "success": true,
   "data": {
-    "id": "uuid",
+    "id": 1,
     "email": "user@gmail.com",
     "name": "홍길동",
     "profileImageUrl": "https://...",
@@ -143,7 +143,7 @@ Google OAuth 로그인 / 신규 회원가입
 
 **Response 200**
 ```json
-{ "success": true, "data": { "id": "uuid", "name": "새 닉네임" } }
+{ "success": true, "data": { "id": 1, "name": "새 닉네임" } }
 ```
 
 ---
@@ -180,8 +180,8 @@ Google OAuth 로그인 / 신규 회원가입
 {
   "success": true,
   "data": {
-    "id": "uuid",
-    "userId": "uuid",
+    "id": 1,
+    "userId": 1,
     "displayName": "Sound Studio A",
     "bio": "...",
     "revenueShareRate": 0.7,
@@ -210,7 +210,7 @@ Google OAuth 로그인 / 신규 회원가입
 {
   "success": true,
   "data": {
-    "id": "uuid",
+    "id": 1,
     "displayName": "Sound Studio A",
     "bio": "...",
     "revenueShareRate": 0.7,
@@ -237,7 +237,7 @@ Google OAuth 로그인 / 신규 회원가입
 
 **Response 200**
 ```json
-{ "success": true, "data": { "id": "uuid", "displayName": "New Studio Name", "bio": "새 소개글" } }
+{ "success": true, "data": { "id": 1, "displayName": "New Studio Name", "bio": "새 소개글" } }
 ```
 
 ---
@@ -260,7 +260,7 @@ Google OAuth 로그인 / 신규 회원가입
   "data": {
     "sounds": [
       {
-        "id": "uuid",
+        "id": 1,
         "fileName": "rain_heavy_01.wav",
         "category": { "major": "ambience", "mid": "weather", "sub": "rain" },
         "duration": 30.5,
@@ -303,7 +303,7 @@ Google OAuth 로그인 / 신규 회원가입
 {
   "success": true,
   "data": {
-    "id": "uuid",
+    "id": 1,
     "fileName": "rain_heavy_01.wav",
     "s3Key": "sounds/designer-uuid/rain_heavy_01.wav",
     "originalPath": "Pack_A/Weather/rain_heavy_01.wav",
@@ -334,7 +334,7 @@ Google OAuth 로그인 / 신규 회원가입
 
 **Response 200**
 ```json
-{ "success": true, "data": { "id": "uuid" } }
+{ "success": true, "data": { "id": 1 } }
 ```
 
 ---
@@ -374,7 +374,7 @@ Google OAuth 로그인 / 신규 회원가입
   "data": {
     "projects": [
       {
-        "id": "uuid",
+        "id": 1,
         "title": "내 첫 번째 영상",
         "thumbnailUrl": "https://...",
         "status": "ready",
@@ -393,49 +393,63 @@ Google OAuth 로그인 / 신규 회원가입
 ---
 
 ### POST /api/projects
-새 프로젝트 생성 (영상 업로드)
+새 프로젝트 생성 (메타데이터만, 영상은 별도 업로드)
 
 **인증 필요**: 로그인 상태  
-**Content-Type**: `multipart/form-data`
+**Content-Type**: `application/json`
 
 **Request Body**
-| 필드 | 타입 | 필수 | 설명 |
-|------|------|------|------|
-| video | File | ✓ | 영상 파일 (`mp4`, `mov`) |
-| title | string | | 프로젝트 제목 (기본값: 파일명) |
+```json
+{ "title": "내 첫 번째 영상" }
+```
 
 **Response 201**
 ```json
 {
   "success": true,
   "data": {
-    "id": "uuid",
+    "id": 1,
     "title": "내 첫 번째 영상",
     "status": "uploading",
-    "monthlyUsageCount": 2,
-    "remainingMonthlyUsage": 1,
     "createdAt": "2026-04-13T00:00:00Z"
   }
 }
 ```
 
-**Response 429** — 무료 플랜 월간 생성 한도 초과
+---
+
+### POST /api/projects/:id/video
+프로젝트에 영상 업로드 — S3에 저장하고 AI 분석 작업을 enqueue한다.
+
+**인증 필요**: 로그인 상태 (본인 프로젝트)  
+**Content-Type**: `multipart/form-data`  
+**최대 크기**: 500MB  
+**허용 MIME**: `video/mp4`, `video/webm`, `video/quicktime`
+
+**Request Body**
+| 필드 | 타입 | 필수 | 설명 |
+|------|------|------|------|
+| file | File | ✓ | 영상 파일 |
+
+**Response 202**
 ```json
 {
-  "success": false,
-  "error": {
-    "code": "RATE_LIMIT",
-    "message": "무료 플랜은 월 3개 프로젝트까지 생성할 수 있습니다"
+  "success": true,
+  "data": {
+    "projectId": 1,
+    "jobId": "job_abc123",
+    "status": "analyzing",
+    "s3Key": "videos/{projectId}/{uuid}.mp4"
   }
 }
 ```
 
-프로 플랜(`plan=pro`)은 월간 프로젝트 생성 제한을 적용하지 않는다.
+업로드 완료 후 자동으로 AI 분석이 enqueue되므로 별도의 분석 요청 API는 없다. 진행 상태는 `GET /api/projects/:id/status` 폴링으로 확인한다.
 
 ---
 
 ### GET /api/projects/:id
-프로젝트 상세 조회 — 에디터 로드 시 최신 스냅샷 포함
+프로젝트 메타 정보 조회 (스냅샷 제외)
 
 **인증 필요**: 로그인 상태 (본인 프로젝트)
 
@@ -444,35 +458,62 @@ Google OAuth 로그인 / 신규 회원가입
 {
   "success": true,
   "data": {
-    "id": "uuid",
+    "id": 1,
     "title": "내 첫 번째 영상",
     "thumbnailUrl": "https://...",
     "status": "ready",
     "originalVideoUrl": "https://...",
-    "finalVideoUrl": null,
+    "durationSeconds": 120,
+    "createdAt": "2026-04-13T00:00:00Z",
+    "updatedAt": "2026-04-13T02:00:00Z"
+  }
+}
+```
+
+스냅샷 및 사운드 에셋을 포함한 에디터 로드 응답은 `GET /:id/load` 참고.
+
+---
+
+### GET /api/projects/:id/load
+에디터 로드 — 프로젝트 메타 + 최신 스냅샷(trackGroups > tracks > events 중첩) + 재생용 sound_assets 맵
+
+**인증 필요**: 로그인 상태 (본인 프로젝트)
+
+**Response 200**
+```json
+{
+  "success": true,
+  "data": {
+    "id": 1,
+    "title": "내 첫 번째 영상",
+    "thumbnailUrl": "https://...",
+    "status": "ready",
+    "originalVideoUrl": "https://...",
     "durationSeconds": 120,
     "snapshot": {
       "version": 3,
       "trackGroups": [
         {
-          "id": "uuid",
-          "type": "background",
+          "id": 1,
+          "type": "ambience",
           "volume": 80,
           "isMuted": false,
           "isSolo": false,
           "order": 1,
           "tracks": [
             {
-              "id": "uuid",
-              "name": "Background 1",
+              "id": 1,
+              "name": "Ambience 1",
               "volume": 100,
               "pan": 0,
               "isMuted": false,
+              "isSolo": false,
               "order": 1,
               "events": [
                 {
-                  "id": "uuid",
-                  "soundAssetId": "uuid",
+                  "id": 1,
+                  "soundAssetId": 101,
+                  "aiEventId": 42,
                   "startTime": 0.0,
                   "endTime": 15.5,
                   "offset": 0.0,
@@ -486,10 +527,34 @@ Google OAuth 로그인 / 신규 회원가입
           ]
         }
       ]
+    },
+    "soundAssets": {
+      "101": {
+        "id": 101,
+        "fileName": "rain_ambience.mp3",
+        "s3Key": "sounds/library/rain_ambience.mp3",
+        "duration": 30.0,
+        "format": "mp3",
+        "channels": 2,
+        "sampleRate": 48000,
+        "fileSize": 480000
+      }
     }
   }
 }
 ```
+
+**`trackGroups` 반환 규칙**
+- 프로젝트 생성 시 6개 대분류 그룹(`ambience | cinematic | dialogue_vo | foley | sfx | music`)이 자동 생성된다. (분류 체계는 `ai/taxonomy.json` 기준)
+- 응답의 `trackGroups`는 **항상 6개가 순서대로 포함**된다 (`order` 기준 정렬).
+
+**`soundAssets` 맵**
+- 현재 스냅샷에서 참조되는 `soundAssetId`에 해당하는 재생 메타데이터를 key-value 형태로 inline 반환해 N+1 요청을 방지한다.
+
+**`aiEventId`**
+- AI 분석 파이프라인이 생성한 이벤트(의도 + embedding)와의 역참조.
+- `null`이면 유저가 수동으로 추가한 클립이다.
+- 프론트는 이 값을 save 요청에 **그대로 round-trip**해 보존해야 한다. 이후 "이 클립과 유사한 사운드 찾기" API(`/api/sounds/:id/similar?trackEventId=…`)가 이 id를 역참조해 원 의도 기반 벡터 검색을 수행한다.
 
 ---
 
@@ -508,7 +573,7 @@ Google OAuth 로그인 / 신규 회원가입
 {
   "success": true,
   "data": {
-    "projectId": "uuid",
+    "projectId": 1,
     "jobId": "job_abc123",
     "status": "analyzing",
     "currentStage": "matching",
@@ -519,7 +584,7 @@ Google OAuth 로그인 / 신규 회원가입
 }
 ```
 
-분석 또는 렌더가 끝나면 `status`는 각각 `ready`, `done`으로 반영되고 `progress`는 `100`이 된다.
+분석이 끝나면 `status`는 `ready`, `progress`는 `100`이 된다.
 
 ---
 
@@ -535,7 +600,7 @@ Google OAuth 로그인 / 신규 회원가입
 
 **Response 200**
 ```json
-{ "success": true, "data": { "id": "uuid", "title": "새 제목" } }
+{ "success": true, "data": { "id": 1, "title": "새 제목" } }
 ```
 
 ---
@@ -552,51 +617,8 @@ Google OAuth 로그인 / 신규 회원가입
 
 ---
 
-### POST /api/projects/:id/analyze
-AI 분석 요청 — 업로드 완료 후 비동기 작업 enqueue
-
-**인증 필요**: 로그인 상태 (본인 프로젝트)
-
-**Response 202**
-```json
-{
-  "success": true,
-  "data": {
-    "projectId": "uuid",
-    "jobId": "job_abc123",
-    "status": "analyzing",
-    "currentStage": "pending",
-    "progress": 0
-  }
-}
-```
-
-클라이언트는 이후 `GET /api/projects/:id/status`를 polling하여 진행률을 조회한다.
-
----
-
-### POST /api/projects/:id/render
-최종 영상 렌더링 요청 — 비동기 작업 enqueue
-
-**인증 필요**: 로그인 상태 (본인 프로젝트)
-
-**Response 202**
-```json
-{
-  "success": true,
-  "data": {
-    "projectId": "uuid",
-    "jobId": "job_render_abc123",
-    "status": "rendering",
-    "progress": 0
-  }
-}
-```
-
----
-
-### POST /api/projects/:id/snapshots
-에디터 저장 — 현재 전체 상태를 스냅샷으로 저장
+### POST /api/projects/:id/save
+에디터 저장 — 현재 전체 상태를 스냅샷으로 저장하고 새 버전을 발급한다. trackGroups/tracks/trackEvents는 index 기반 참조(`groupIndex`, `trackIndex`)로 전달한다.
 
 **인증 필요**: 로그인 상태 (본인 프로젝트)
 
@@ -605,44 +627,52 @@ AI 분석 요청 — 업로드 완료 후 비동기 작업 enqueue
 {
   "trackGroups": [
     {
-      "id": "uuid",
-      "type": "background",
+      "type": "ambience",
       "volume": 80,
       "isMuted": false,
       "isSolo": false,
-      "order": 1,
-      "tracks": [
-        {
-          "id": "uuid",
-          "name": "Background 1",
-          "volume": 100,
-          "pan": 0,
-          "isMuted": false,
-          "order": 1,
-          "events": [
-            {
-              "soundAssetId": "uuid",
-              "startTime": 0.0,
-              "endTime": 15.5,
-              "offset": 0.0,
-              "volumeOverride": 80,
-              "fadeIn": 0.5,
-              "fadeOut": 1.0,
-              "isUserEdited": true
-            }
-          ]
-        }
-      ]
+      "order": 1
+    }
+  ],
+  "tracks": [
+    {
+      "groupIndex": 0,
+      "name": "Ambience 1",
+      "volume": 100,
+      "pan": 0,
+      "isMuted": false,
+      "isSolo": false,
+      "order": 1
+    }
+  ],
+  "trackEvents": [
+    {
+      "trackIndex": 0,
+      "soundAssetId": 101,
+      "aiEventId": 42,
+      "startTime": 0.0,
+      "endTime": 15.5,
+      "offset": 0.0,
+      "volumeOverride": 80,
+      "fadeIn": 0.5,
+      "fadeOut": 1.0,
+      "isUserEdited": true
     }
   ]
 }
 ```
 
+`type`은 `ambience | cinematic | dialogue_vo | foley | sfx | music` 중 하나.
+
+**`aiEventId`**
+- load 응답에서 받은 값을 그대로 round-trip. 유저가 수동 추가한 클립은 생략(또는 null).
+- 백엔드는 값 유효성(해당 프로젝트 소속 ai_event인지)만 검증하고 그대로 저장. ai_events 테이블은 save 과정에서 **절대 변경·삭제되지 않는다**.
+
 **Response 201**
 ```json
 {
   "success": true,
-  "data": { "id": "uuid", "version": 4, "createdAt": "2026-04-13T02:00:00Z" }
+  "data": { "id": 1, "version": 4, "createdAt": "2026-04-13T02:00:00Z" }
 }
 ```
 
@@ -659,8 +689,8 @@ AI 분석 요청 — 업로드 완료 후 비동기 작업 enqueue
   "success": true,
   "data": {
     "snapshots": [
-      { "id": "uuid", "version": 3, "createdAt": "2026-04-13T01:00:00Z" },
-      { "id": "uuid", "version": 2, "createdAt": "2026-04-13T00:30:00Z" }
+      { "id": 1, "version": 3, "createdAt": "2026-04-13T01:00:00Z" },
+      { "id": 1, "version": 2, "createdAt": "2026-04-13T00:30:00Z" }
     ]
   }
 }
@@ -675,10 +705,120 @@ AI 분석 요청 — 업로드 완료 후 비동기 작업 enqueue
 
 **Response 200**
 ```json
-{ "success": true, "data": { "projectId": "uuid", "restoredVersion": 2 } }
+{ "success": true, "data": { "projectId": 1, "restoredVersion": 2 } }
 ```
 
 복원된 스냅샷에도 각 이벤트의 `isUserEdited` 값은 유지되어야 한다.
+
+---
+
+### GET /api/projects/:id/similar-sounds
+에디터에서 클립 클릭 시 대체 후보 탐색 — AI가 배치한 의도(ai_event.embedding)를 기반으로 유사 에셋을 벡터 검색하여 반환한다.
+
+**인증 필요**: 로그인 상태 (본인 프로젝트)
+
+**검색 벡터 결정**
+1. `aiEventId`가 주어지면 → **ai_events.embedding** (원 AI 의도)으로 검색
+2. `aiEventId` 없이 `soundAssetId`만 주어지면 → **sound_assets.embedding** (파일 자체 유사)으로 검색
+
+즉, 가능하면 "원래 AI가 어떤 소리를 원했는가"로 검색하고, 유저가 수동 추가한 클립 등 맥락이 없을 때만 현재 사운드 파일 자체로 검색한다.
+
+**Query Parameters**
+| 파라미터 | 타입 | 필수 | 설명 |
+|---------|------|------|------|
+| aiEventId | number | △ | AI 이벤트 ID. 해당 이벤트의 임베딩으로 검색. `aiEventId` 또는 `soundAssetId` 중 하나는 필수 |
+| soundAssetId | number | △ | 현재 배치된 에셋 ID. `aiEventId` 없을 때 이 에셋의 임베딩으로 검색 |
+| level | string | | `major` \| `mid` \| `sub` — 필터 기준 카테고리 레벨. 기본값: 소스 에셋의 `sub` |
+| categoryId | number | | 해당 level의 카테고리 ID. 기본값: 소스 에셋의 해당 level ID |
+| limit | number | | 반환 개수 (기본 100, 최대 200) |
+| offset | number | | 건너뛸 개수 (기본 0) |
+
+클라이언트는 클립 클릭 시 `aiEventId`를 함께 넘기고 `level=sub` 기본 호출, 사용자가 탭 전환할 때마다 level/categoryId를 바꿔 재호출한다.
+
+**Response 200**
+```json
+{
+  "success": true,
+  "data": {
+    "queryVector": "ai_event",
+    "aiEventId": 42,
+    "level": "sub",
+    "categoryId": 7,
+    "sounds": [
+      {
+        "id": 101,
+        "fileName": "rain_light_02.wav",
+        "category": { "major": "ambience", "mid": "weather", "sub": "rain" },
+        "mood": ["calm"],
+        "tags": ["rain", "light"],
+        "duration": 28.3,
+        "format": "wav",
+        "similarity": 0.87
+      }
+    ]
+  }
+}
+```
+
+- `similarity`는 `1 - cosine_distance` (0~1, 1에 가까울수록 유사). 소스 자기 자신은 응답에서 제외한다.
+- `queryVector`는 `"ai_event" | "sound_asset"` — 어떤 벡터로 검색했는지 명시.
+- `aiEventId`는 ai_event 기반 검색 시에만 포함.
+
+---
+
+### GET /api/projects/:id/analyses
+프로젝트의 AI 분석 리포트 목록 — `project_analyses` 기반. 재분석 회차가 여러 번 돌면 내림차순(batch desc)으로 나온다.
+
+**인증 필요**: 로그인 상태 (본인 프로젝트)
+
+**Response 200**
+```json
+{
+  "success": true,
+  "data": {
+    "analyses": [
+      {
+        "id": 12,
+        "jobId": "550e8400-e29b-41d4-a716-446655440000",
+        "analysisBatch": 2,
+        "videoSummary": "충주맨 김선태가 ...",
+        "videoContext": "충주시 홍보맨 ...",
+        "eventCount": 58,
+        "completedAt": "2026-04-15T04:01:33Z",
+        "createdAt":   "2026-04-15T04:01:34Z"
+      }
+    ]
+  }
+}
+```
+
+`raw_payload` 와 `telemetry` 는 이 목록 API에서는 제외한다(목록은 가벼워야 함).
+
+---
+
+### GET /api/projects/:id/analyses/:batch
+특정 회차의 AI 분석 리포트 상세. `raw_payload`, `telemetry` 포함.
+
+**인증 필요**: 로그인 상태 (본인 프로젝트)
+
+**Response 200**
+```json
+{
+  "success": true,
+  "data": {
+    "id": 12,
+    "jobId": "550e8400-...",
+    "analysisBatch": 2,
+    "videoSummary": "...",
+    "videoContext": "...",
+    "rawPayload": { /* AI JobDoneMessage 원본 전체 */ },
+    "telemetry":  { "llmUsage": {}, "metrics": {} },
+    "completedAt": "2026-04-15T04:01:33Z"
+  }
+}
+```
+
+> `:batch` 는 `analysis_batch` 값. `latest` 를 넣으면 가장 최근 회차를 반환한다.
 
 ---
 
@@ -707,7 +847,7 @@ AI 분석 요청 — 업로드 완료 후 비동기 작업 enqueue
   "data": {
     "sounds": [
       {
-        "id": "uuid",
+        "id": 1,
         "fileName": "rain_heavy_01.wav",
         "category": { "major": "ambience", "mid": "weather", "sub": "rain" },
         "mood": ["calm", "dark"],
@@ -738,15 +878,15 @@ AI 분석 요청 — 업로드 완료 후 비동기 작업 enqueue
   "success": true,
   "data": [
     {
-      "id": "uuid",
+      "id": 1,
       "name": "ambience",
       "children": [
         {
-          "id": "uuid",
+          "id": 1,
           "name": "weather",
           "children": [
-            { "id": "uuid", "name": "rain" },
-            { "id": "uuid", "name": "thunder" }
+            { "id": 1, "name": "rain" },
+            { "id": 1, "name": "thunder" }
           ]
         }
       ]
@@ -767,7 +907,7 @@ AI 분석 요청 — 업로드 완료 후 비동기 작업 enqueue
 {
   "success": true,
   "data": {
-    "id": "uuid",
+    "id": 1,
     "fileName": "rain_heavy_01.wav",
     "category": { "major": "ambience", "mid": "weather", "sub": "rain" },
     "mood": ["calm", "peaceful"],
@@ -777,12 +917,14 @@ AI 분석 요청 — 업로드 완료 후 비동기 작업 enqueue
     "format": "wav",
     "fileSize": 1234567,
     "downloadCount": 120,
-    "designer": { "id": "uuid", "displayName": "Sound Studio A" }
+    "designer": { "id": 1, "displayName": "Sound Studio A" }
   }
 }
 ```
 
 `originalPath`와 `embedding`은 internal metadata이므로 응답에 포함하지 않는다.
+
+---
 
 ---
 
@@ -812,7 +954,7 @@ AI 분석 요청 — 업로드 완료 후 비동기 작업 enqueue
   "success": true,
   "data": {
     "designer": {
-      "id": "uuid",
+      "id": 1,
       "displayName": "Sound Studio A",
       "bio": "...",
       "soundCount": 42,
@@ -820,7 +962,7 @@ AI 분석 요청 — 업로드 완료 후 비동기 작업 enqueue
     },
     "sounds": [
       {
-        "id": "uuid",
+        "id": 1,
         "fileName": "rain_heavy_01.wav",
         "format": "wav"
       }
@@ -868,18 +1010,18 @@ AI가 자동 생성한 이벤트는 `isUserEdited: false`로 저장한다.
 
 ```json
 {
-  "projectId": "uuid",
+  "projectId": 1,
   "status": "ready",
   "snapshot": {
     "trackGroups": [
       {
-        "type": "background",
+        "type": "ambience",
         "tracks": [
           {
-            "name": "Background 1",
+            "name": "Ambience 1",
             "events": [
               {
-                "soundAssetId": "uuid",
+                "soundAssetId": 101,
                 "startTime": 0.0,
                 "endTime": 15.5,
                 "offset": 0.0,

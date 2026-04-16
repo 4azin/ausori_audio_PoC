@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npx tsc *)",
+      "Bash(node -e \"console.log\\('ok'\\)\")",
+      "Bash(node_modules/.bin/tsc --noEmit)"
+    ]
+  }
+}

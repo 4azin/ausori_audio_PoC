@@ -5,7 +5,7 @@
 ```mermaid
 erDiagram
     users {
-        uuid id PK
+        bigserial id PK
         string email UK
         string name
         string profile_image_url
@@ -18,22 +18,21 @@ erDiagram
     }
 
     projects {
-        uuid id PK
-        uuid user_id FK
+        bigserial id PK
+        bigint user_id FK
         string title
         string thumbnail_url
-        enum status "uploading | analyzing | ready | rendering | done | failed"
+        enum status "uploading | analyzing | ready | failed"
         string original_video_url
-        string final_video_url
         int duration_seconds
         timestamp created_at
         timestamp updated_at
     }
 
     track_groups {
-        uuid id PK
-        uuid project_id FK
-        enum type "dialogue | music | background | foley | sfx | cinematic"
+        bigserial id PK
+        bigint project_id FK
+        enum type "ambience | cinematic | dialogue_vo | foley | sfx | music"
         int volume "0~100"
         boolean is_muted
         boolean is_solo
@@ -43,23 +42,25 @@ erDiagram
     }
 
     tracks {
-        uuid id PK
-        uuid project_id FK "비정규화 — 조인 없이 프로젝트 단위 조회"
-        uuid group_id FK
+        bigserial id PK
+        bigint project_id FK "비정규화 — 조인 없이 프로젝트 단위 조회"
+        bigint group_id FK
         string name
         int volume "0~100"
         int pan "-100~100"
         boolean is_muted
+        boolean is_solo
         int order
         timestamp created_at
         timestamp updated_at
     }
 
     track_events {
-        uuid id PK
-        uuid project_id FK "비정규화 — 조인 없이 프로젝트 단위 조회"
-        uuid track_id FK
-        uuid sound_asset_id FK
+        bigserial id PK
+        bigint project_id FK "비정규화 — 조인 없이 프로젝트 단위 조회"
+        bigint track_id FK
+        bigint sound_asset_id FK
+        bigint ai_event_id FK "nullable, ON DELETE SET NULL — AI 분석 의도 연결"
         float start_time
         float end_time
         float offset "원본 오디오 트림 시작점"
@@ -71,47 +72,74 @@ erDiagram
         timestamp updated_at
     }
 
+    ai_events {
+        bigserial id PK
+        bigint project_id FK "ON DELETE CASCADE"
+        bigint analysis_id FK "ON DELETE CASCADE — 원 분석 리포트"
+        enum group_type "AI가 배정한 원 그룹 (track_group_type)"
+        text description "AI 생성 자연어 설명 — 원본 의도"
+        vector embedding "vector(3072) — description 임베딩"
+        float suggested_start_time "AI 제안 시작 시간 (nullable)"
+        float suggested_end_time "AI 제안 종료 시간 (nullable)"
+        int analysis_batch "재분석 회차 (project_analyses.analysis_batch 와 동일값)"
+        timestamp created_at
+    }
+
+    project_analyses {
+        bigserial id PK
+        bigint project_id FK "ON DELETE CASCADE"
+        string job_id "AI 작업 UUID"
+        int analysis_batch "프로젝트 내 재분석 회차"
+        text video_summary "nullable"
+        text video_context "nullable"
+        jsonb raw_payload "AI 원본 JobDoneMessage 통째 (events 포함)"
+        jsonb telemetry "llmUsage / metrics (nullable)"
+        timestamp completed_at "AI 완료 시각"
+        timestamp created_at
+    }
+
     project_snapshots {
-        uuid id PK
-        uuid project_id FK
+        bigserial id PK
+        bigint project_id FK
         int version
-        jsonb snapshot "tracks + events 전체 상태"
+        jsonb snapshot "trackGroups > tracks > events 전체 상태 (load 응답 기준)"
         timestamp created_at
     }
 
     category_major {
-        uuid id PK
-        string name UK "ambience | foley | sfx | music | cinematic"
+        bigserial id PK
+        string name UK "Ambience | Cinematic | Dialogue_VO | Foley | SFX | Music (taxonomy.json 원본 표기)"
     }
 
     category_mid {
-        uuid id PK
-        uuid major_id FK
-        string name "weather | footsteps | impact 등"
+        bigserial id PK
+        bigint major_id FK "ON DELETE CASCADE"
+        string name "Weather | Footsteps | Impact 등 (taxonomy 원본 표기)"
     }
 
     category_sub {
-        uuid id PK
-        uuid mid_id FK
-        string name "rain | thunder | snow 등"
+        bigserial id PK
+        string name "Rain | Thunder | Snow 등 (flat 라벨 풀, 이름 중복 허용)"
     }
 
     sound_assets {
-        uuid id PK
-        uuid designer_id FK "nullable (null이면 기본 라이브러리)"
+        bigserial id PK
+        bigint designer_id FK "nullable, ON DELETE SET NULL (null이면 기본 라이브러리)"
         string file_name
-        string s3_key
-        string original_path "디자이너 원본 폴더 경로"
-        uuid major_id FK
-        uuid mid_id FK
-        uuid sub_id FK "nullable"
-        text[] mood "calm, peaceful 등"
-        text[] tags "rain, window, interior 등"
+        string s3_key UK
+        string original_path "디자이너 원본 폴더 경로 (nullable)"
+        bigint major_id FK "ON DELETE RESTRICT"
+        bigint mid_id FK "ON DELETE RESTRICT"
+        bigint sub_id FK "ON DELETE RESTRICT"
+        text[] mood "NOT NULL DEFAULT '{}' — calm, peaceful 등"
+        text[] tags "NOT NULL DEFAULT '{}' — rain, window, interior 등"
         string description
         int bpm "음악만, 나머지 NULL"
         text[] instruments "음악만"
         float duration
         string format "mp3 | ogg | wav"
+        int channels "1=mono, 2=stereo"
+        int sample_rate "Hz (44100, 48000 등)"
         int file_size "bytes"
         int download_count "사용 횟수"
         vector embedding "vector(3072) Gemini 임베딩"
@@ -119,8 +147,8 @@ erDiagram
     }
 
     sound_designers {
-        uuid id PK
-        uuid user_id FK
+        bigserial id PK
+        bigint user_id FK
         string display_name
         string bio
         float revenue_share_rate "default 0.7"
@@ -134,9 +162,12 @@ erDiagram
     track_groups ||--o{ tracks : "contains"
     tracks ||--o{ track_events : "has"
     track_events }o--|| sound_assets : "uses"
+    projects ||--o{ project_analyses : "analyzed as"
+    project_analyses ||--o{ ai_events : "extracted into"
+    projects ||--o{ ai_events : "owns"
+    ai_events ||--o{ track_events : "spawns (nullable)"
     sound_designers ||--o{ sound_assets : "uploads"
     category_major ||--o{ category_mid : "has"
-    category_mid ||--o{ category_sub : "has"
     category_major ||--o{ sound_assets : "classifies"
     category_mid ||--o{ sound_assets : "classifies"
     category_sub ||--o{ sound_assets : "classifies"
@@ -151,7 +182,7 @@ erDiagram
 
 | 컬럼 | 타입 | 설명 |
 |------|------|------|
-| id | UUID | PK |
+| id | BIGSERIAL | PK |
 | email | VARCHAR | Google 계정 이메일 (unique) |
 | name | VARCHAR | 표시 이름 |
 | profile_image_url | VARCHAR | Google 프로필 이미지 URL |
@@ -167,23 +198,24 @@ erDiagram
 
 | 컬럼 | 타입 | 설명 |
 |------|------|------|
-| id | UUID | PK |
-| user_id | UUID | FK → users |
+| id | BIGSERIAL | PK |
+| user_id | BIGINT | FK → users |
 | title | VARCHAR | 프로젝트 이름 |
 | thumbnail_url | VARCHAR | 프로젝트 썸네일 (영상 첫 프레임 등) |
-| status | ENUM | 처리 상태 (uploading → analyzing → ready → ...) |
+| status | ENUM | 처리 상태 (uploading / analyzing / ready / failed) |
 | original_video_url | VARCHAR | 원본 영상 파일 경로 |
-| final_video_url | VARCHAR | 최종 렌더링된 영상 파일 경로 |
 | duration_seconds | INT | 영상 길이 (초) |
+| created_at | TIMESTAMP | 생성일 |
+| updated_at | TIMESTAMP | 수정일 |
 
 ### track_groups
 트랙 대분류 그룹. 프로젝트 생성 시 6개 자동 생성됨.
 
 | 컬럼 | 타입 | 설명 |
 |------|------|------|
-| id | UUID | PK |
-| project_id | UUID | FK → projects |
-| type | ENUM | dialogue / music / background / foley / sfx / cinematic |
+| id | BIGSERIAL | PK |
+| project_id | BIGINT | FK → projects |
+| type | ENUM | ambience / cinematic / dialogue_vo / foley / sfx / music |
 | volume | INT | 그룹 전체 볼륨 (0 ~ 100) |
 | is_muted | BOOLEAN | 그룹 뮤트 상태 |
 | is_solo | BOOLEAN | 그룹 솔로 상태 |
@@ -196,13 +228,14 @@ erDiagram
 
 | 컬럼 | 타입 | 설명 |
 |------|------|------|
-| id | UUID | PK |
-| project_id | UUID | FK → projects (비정규화) |
-| group_id | UUID | FK → track_groups |
+| id | BIGSERIAL | PK |
+| project_id | BIGINT | FK → projects (비정규화) |
+| group_id | BIGINT | FK → track_groups |
 | name | VARCHAR | 트랙 이름 |
 | volume | INT | 트랙 볼륨 (0 ~ 100) |
 | pan | INT | 좌우 패닝 (-100 ~ 100, 0이 중앙) |
 | is_muted | BOOLEAN | 트랙 뮤트 상태 |
+| is_solo | BOOLEAN | 트랙 솔로 상태 |
 | order | INT | 그룹 내 표시 순서 |
 | created_at | TIMESTAMP | 생성일 |
 | updated_at | TIMESTAMP | 수정일 |
@@ -212,10 +245,11 @@ erDiagram
 
 | 컬럼 | 타입 | 설명 |
 |------|------|------|
-| id | UUID | PK |
-| project_id | UUID | FK → projects (비정규화) |
-| track_id | UUID | FK → tracks |
-| sound_asset_id | UUID | FK → sound_assets |
+| id | BIGSERIAL | PK |
+| project_id | BIGINT | FK → projects (비정규화) |
+| track_id | BIGINT | FK → tracks |
+| sound_asset_id | BIGINT | FK → sound_assets, **ON DELETE RESTRICT** (사용 중 에셋 삭제 차단) |
+| ai_event_id | BIGINT | FK → ai_events, **nullable, ON DELETE SET NULL**. AI가 생성한 이벤트는 이 값으로 원 의도(description/embedding)에 역추적. 유저가 수동 추가한 클립은 NULL |
 | start_time | FLOAT | 효과음 시작 시간 (초) |
 | end_time | FLOAT | 효과음 종료 시간 (초) |
 | offset | FLOAT | 원본 오디오 트림 시작점 (초) |
@@ -226,54 +260,146 @@ erDiagram
 | created_at | TIMESTAMP | 생성일 |
 | updated_at | TIMESTAMP | 수정일 |
 
+### project_analyses
+AI 분석 리포트의 **원본 페이로드**를 append-only 로 보관. 한 번의 AI 작업 완료마다 한 행. `events[]` 를 포함한 JobDoneMessage 전체를 raw_payload 에 담고, 자주 조회되는 video_summary / video_context 는 별도 컬럼으로 승격.
+
+| 컬럼 | 타입 | 설명 |
+|------|------|------|
+| id | BIGSERIAL | PK |
+| project_id | BIGINT | FK → projects, **ON DELETE CASCADE** |
+| job_id | VARCHAR | AI 작업 UUID (`JobDoneMessage.jobId`) |
+| analysis_batch | INT | 프로젝트 내 재분석 회차. `UNIQUE (project_id, analysis_batch)` |
+| video_summary | TEXT | AI가 생성한 영상 전체 요약 (nullable) |
+| video_context | TEXT | 영상 맥락 상세 (nullable) |
+| raw_payload | JSONB | AI 원본 JobDoneMessage 전체. 감사/재처리/디버깅용 |
+| telemetry | JSONB | `llmUsage` / `metrics` 등 운영 지표 (nullable) |
+| completed_at | TIMESTAMP | AI 완료 시각 (`JobDoneMessage.completedAt`) |
+| created_at | TIMESTAMP | 백엔드 INSERT 시각 |
+
+> **역할**: (1) 프론트 "분석 리포트" 뷰의 소스 (2) 재분석 차수 비교 (3) description 재임베딩·재배치의 원천 (4) LLM 비용 추적.
+
+### ai_events
+AI 분석이 생성한 이벤트 의도(자연어 + embedding). **append-only 영속 자산**으로, 유저가 track_events에서 삭제·이동·수정해도 여기 데이터는 그대로 남는다.
+
+| 컬럼 | 타입 | 설명 |
+|------|------|------|
+| id | BIGSERIAL | PK |
+| project_id | BIGINT | FK → projects, **ON DELETE CASCADE** |
+| analysis_id | BIGINT | FK → project_analyses, **ON DELETE CASCADE**. 원 분석 리포트로 역참조 |
+| group_type | ENUM | AI가 배정한 원 그룹 (`track_group_type`: ambience/cinematic/dialogue_vo/foley/sfx/music) |
+| description | TEXT | AI가 생성한 자연어 설명 (원 의도) |
+| embedding | VECTOR(3072) | description의 Gemini 임베딩 |
+| suggested_start_time | FLOAT | AI 제안 시작 시간(초), nullable |
+| suggested_end_time | FLOAT | AI 제안 종료 시간(초), nullable |
+| analysis_batch | INT | 재분석 회차. project_analyses.analysis_batch 와 동일 값 (필터 편의용 비정규화) |
+| created_at | TIMESTAMP | 생성일 |
+
+> **유저 편집과의 관계**
+> - 유저가 track_event를 삭제해도 ai_event는 남는다 → "제거된 AI 제안 복원" UX 가능
+> - 유저가 사운드를 다른 걸로 바꿔도 ai_event_id는 유지 → "원 의도 기반 유사 후보 재검색" 가능
+> - 유저가 수동으로 추가한 클립은 `track_events.ai_event_id = NULL`
+> - 재분석이 돌면 새 analysis_batch로 append. 이전 batch의 ai_events는 orphan으로 남아있을 수 있음 (학습 데이터)
+
 ### project_snapshots
 프로젝트 편집 히스토리. 버전별 전체 상태를 JSON으로 저장.
 
 | 컬럼 | 타입 | 설명 |
 |------|------|------|
-| id | UUID | PK |
-| project_id | UUID | FK → projects |
+| id | BIGSERIAL | PK |
+| project_id | BIGINT | FK → projects |
 | version | INT | 스냅샷 버전 번호 |
-| snapshot | JSONB | tracks + events 전체 상태 |
+| snapshot | JSONB | trackGroups > tracks > events 중첩 구조 (load 응답 기준) |
 | created_at | TIMESTAMP | 생성일 |
 
+#### snapshot JSON 스키마 (load 응답 기준)
+`GET /api/projects/:id/load`의 `snapshot` 필드와 동일한 구조. 복원 시 이 JSON을 그대로 track_groups / tracks / track_events 테이블에 치환 삽입.
+
+```jsonc
+{
+  "version": 1,
+  "trackGroups": [
+    {
+      "id": 1,                    // 복원 시 재발급 (참고용)
+      "type": "ambience",
+      "volume": 80,
+      "isMuted": false,
+      "isSolo": false,
+      "order": 1,
+      "tracks": [
+        {
+          "id": 1,
+          "name": "Ambience 1",
+          "volume": 100,
+          "pan": 0,
+          "isMuted": false,
+          "isSolo": false,
+          "order": 1,
+          "events": [
+            {
+              "id": 1,
+              "soundAssetId": 101,
+              "startTime": 0.0,
+              "endTime": 15.5,
+              "offset": 0.0,
+              "volumeOverride": 80,
+              "aiEventId": 42,          // nullable — 유저 수동 추가면 null
+              "fadeIn": 0.5,
+              "fadeOut": 1.0,
+              "isUserEdited": false
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
+```
+
+> 복원 정책: 저장된 id는 참고용. 복원 시 track_groups / tracks / track_events를 project_id 기준 전체 삭제 후 스냅샷 JSON을 순회하며 신규 PK로 재삽입 (`saveProject`의 replace 전략과 동일).
+
 ### category_major / category_mid / category_sub
-효과음 3단계 분류 체계 (대분류 → 중분류 → 소분류).
+효과음 3단계 분류 체계 (대분류 → 중분류 → 소분류). 전 단계 NOT NULL.
+원천 데이터는 `ai/taxonomy.json`이며, 이름은 **taxonomy 원본 표기**(`Ambience`, `Dialogue_VO`, `SFX`, `UI`, `Slam` 등)를 그대로 저장한다. `track_group_type` enum(소문자)과는 앱 레이어에서 매핑.
 
 | 테이블 | 컬럼 | 타입 | 설명 |
 |--------|------|------|------|
-| category_major | id | UUID | PK |
-| | name | VARCHAR | 대분류 |
-| category_mid | id | UUID | PK |
-| | major_id | UUID | FK → category_major |
-| | name | VARCHAR | 중분류 |
-| category_sub | id | UUID | PK |
-| | mid_id | UUID | FK → category_mid |
-| | name | VARCHAR | 소분류 |
+| category_major | id | BIGSERIAL | PK |
+| | name | VARCHAR(50) | 대분류. **UNIQUE**. 6개: Ambience / Cinematic / Dialogue_VO / Foley / SFX / Music |
+| category_mid | id | BIGSERIAL | PK |
+| | major_id | BIGINT | FK → category_major, **ON DELETE CASCADE** |
+| | name | VARCHAR(50) | 중분류. **UNIQUE (major_id, name)** — 같은 대분류 하위에서만 유일 |
+| category_sub | id | BIGSERIAL | PK |
+| | name | VARCHAR(50) | 소분류. **flat 라벨 풀 — 이름 중복 허용** (예: Metal/Wood/Dark 등 맥락별 변형 id) |
+
+> **category_sub가 flat인 이유**: JSONL 원천 데이터에서 sub는 mid의 child가 아니라 독립적 라벨 축이다. 동일한 sub(예: `Slam` = id 174)이 여러 mid(`Impact`, `UI`, `Explosion` 등) 아래 등장한다. 따라서 `category_sub.mid_id` FK를 두지 않고 전역 id 풀로 관리한다. `sound_assets`에는 `(major_id, mid_id, sub_id)` 3개 FK가 **독립적**으로 붙는다.
+
+> **ID 고정 전략**: `taxonomy.json` 선언 순서대로 INSERT하면 BIGSERIAL이 부여하는 id가 `sound_assets_*.jsonl`의 `major_id / mid_id / sub_id`와 정확히 일치한다 (검증: SFX=5, SFX/UI=45, SFX/Impact/Slam=174). seed 이후 `setval('category_*_id_seq', MAX(id))`로 시퀀스 보정.
 
 ### sound_assets
 효과음 파일 메타데이터. 기본 라이브러리 + 마켓플레이스 에셋 모두 포함.
 
 | 컬럼 | 타입 | 설명 |
 |------|------|------|
-| id | UUID | PK |
-| designer_id | UUID | FK → sound_designers (null이면 기본 라이브러리) |
+| id | BIGSERIAL | PK |
+| designer_id | BIGINT | FK → sound_designers, **ON DELETE SET NULL** (null이면 기본 라이브러리) |
 | file_name | VARCHAR | 파일 이름 |
-| s3_key | VARCHAR | S3 저장 경로 |
+| s3_key | VARCHAR | S3 저장 경로, **UNIQUE** |
 | original_path | VARCHAR | 디자이너 업로드 시 원본 폴더 경로 (nullable, 트리 복원용) |
-| major_id | UUID | FK → category_major (NOT NULL) |
-| mid_id | UUID | FK → category_mid (NOT NULL) |
-| sub_id | UUID | FK → category_sub (nullable) |
-| mood | TEXT[] | 분위기 태그 (calm, peaceful 등) |
-| tags | TEXT[] | 검색/매칭용 태그 (rain, window 등) |
+| major_id | BIGINT | FK → category_major (NOT NULL, **ON DELETE RESTRICT**) |
+| mid_id | BIGINT | FK → category_mid (NOT NULL, **ON DELETE RESTRICT**) |
+| sub_id | BIGINT | FK → category_sub (NOT NULL, **ON DELETE RESTRICT**) |
+| mood | TEXT[] | 분위기 태그. NOT NULL DEFAULT `'{}'` (calm, peaceful 등) |
+| tags | TEXT[] | 검색/매칭용 태그. NOT NULL DEFAULT `'{}'` (rain, window 등) |
 | description | TEXT | 효과음 설명 |
 | bpm | INT | BPM (음악만, 나머지 NULL) |
 | instruments | TEXT[] | 악기 목록 (음악만) |
 | duration | FLOAT | 효과음 길이 (초) |
 | format | VARCHAR | 파일 포맷 (mp3, ogg, wav) |
+| channels | INT | 채널 수 (1=mono, 2=stereo) |
+| sample_rate | INT | 샘플레이트 (Hz, 44100/48000 등) |
 | file_size | INT | 파일 크기 (bytes) |
 | download_count | INT | 사용 횟수 |
-| embedding | VECTOR(3072) | Gemini 임베딩 벡터 |
+| embedding | VECTOR(3072) | Gemini 임베딩 벡터 (pgvector) |
 | created_at | TIMESTAMP | 생성일 |
 
 ### sound_designers
@@ -281,19 +407,24 @@ erDiagram
 
 | 컬럼 | 타입 | 설명 |
 |------|------|------|
-| id | UUID | PK |
-| user_id | UUID | FK → users |
+| id | BIGSERIAL | PK |
+| user_id | BIGINT | FK → users |
 | display_name | VARCHAR | 판매자 표시 이름 |
 | bio | TEXT | 소개 |
 | revenue_share_rate | FLOAT | 수익 배분율 (기본 0.7 = 70%) |
+| created_at | TIMESTAMP | 생성일 |
 
 ---
 
 ## 3. 주요 설계 결정
 
-- **UUID 사용**: 순차 ID 대신 UUID를 사용하여 예측 불가능한 ID 보장
+- **BIGSERIAL PK**: 인덱스 크기/조인 비용 절감. 외부 노출이 민감한 리소스만 별도 public_id 도입 가능
 - **soft delete 미적용**: 초기 MVP에서는 하드 삭제 사용
 - **sound_assets의 designer_id nullable**: 기본 라이브러리(null)와 마켓플레이스 에셋을 동일 테이블로 관리
 - **track_events의 is_user_edited**: AI 결과와 사용자 편집 내역을 구분하여 추후 AI 개선 데이터로 활용 가능
+- **ai_events 분리 / append-only**: AI 분석 결과(description + embedding)는 영속 자산이므로 유저 편집 생애주기(track_events의 live-replace)와 분리. `track_events.ai_event_id`가 역참조. 유저가 클립을 삭제해도 ai_events는 남아 (1) "이 클립과 유사한 다른 사운드"를 원 의도 기반으로 검색하고 (2) 삭제된 AI 제안 복원 UX를 제공하며 (3) 선택/거절 로그를 학습 데이터로 쌓는다
+- **project_analyses 별도**: AI JobDoneMessage 원본 페이로드(영상 요약/맥락/events 전체/telemetry)를 통째 보관. ai_events 가 벡터검색용으로 "추출"한 레이어라면 project_analyses 는 원본 리포트 레이어. (1) 분석 리포트 UI (2) 재분석 회차 비교 (3) 재임베딩·재배치 재처리 (4) LLM 비용 추적 목적
 - **tracks/track_events의 project_id 비정규화**: 에디터 로드 시 3단 조인(track_events → tracks → track_groups → projects) 회피. 읽기 빈도가 압도적인 실시간 에디터 특성에 맞춤
+- **project_snapshots.snapshot 스키마 = load 응답**: 프론트가 받는 구조와 저장 구조를 일치시켜 복원/직렬화 로직 단순화
+- **category 3단계 전부 NOT NULL**: 분류 누락된 에셋이 검색/추천에서 누락되는 케이스 방지
 - **전 테이블 created_at/updated_at**: 디버깅, 정렬, 향후 멀티유저 협업 시 conflict resolution 대비
