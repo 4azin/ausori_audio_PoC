@@ -10,10 +10,16 @@ export function errorHandler(
   _next: NextFunction
 ) {
   if (err instanceof CustomError) {
-    res.status(err.statusCode).json({ error: err.message });
+    res.status(err.statusCode).json({
+      success: false,
+      error: { code: err.code, message: err.message },
+    });
     return;
   }
 
   console.error(err);
-  res.status(500).json({ error: "서버 내부 오류가 발생했습니다" });
+  res.status(500).json({
+    success: false,
+    error: { code: "INTERNAL_ERROR", message: "서버 내부 오류가 발생했습니다" },
+  });
 }

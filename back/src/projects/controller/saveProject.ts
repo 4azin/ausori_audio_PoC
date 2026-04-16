@@ -11,5 +11,5 @@ export async function saveProject(req: Request, res: Response) {
 
   const result = await saveProjectService(projectId, userId, data);
 
-  res.status(200).json(result);
+  res.status(201).json(result);
 }

@@ -3,55 +3,137 @@ import {
   trackGroupModel,
   trackModel,
   trackEventModel,
+  projectSnapshotModel,
+  SnapshotPayload,
 } from "../../models";
-import { notFoundError } from "../../middleware/customError";
+import { withTransaction } from "../../config/db";
+import { notFoundError, badRequestError } from "../../middleware/customError";
 import { SaveProjectDto } from "../dto";
 
-/** 프로젝트 에디터 상태 일괄 저장 */
+/** 에디터 저장 — 라이브 테이블 replace + project_snapshots 새 버전 기록 */
 export async function saveProject(
   projectId: number,
   userId: number,
   data: SaveProjectDto,
 ) {
   const project = await projectModel.findById(projectId);
-
   if (!project) throw notFoundError("프로젝트를 찾을 수 없습니다");
   if (project.userId !== userId) throw notFoundError("프로젝트를 찾을 수 없습니다");
 
-  /** 기존 데이터 삭제 후 재생성 (replace 전략) */
-  await trackEventModel.deleteAllByProjectId(projectId);
-  await trackModel.deleteAllByProjectId(projectId);
-  await trackGroupModel.deleteAllByProjectId(projectId);
+  // index 참조 유효성 검증
+  for (const t of data.tracks) {
+    if (t.groupIndex < 0 || t.groupIndex >= data.trackGroups.length) {
+      throw badRequestError(`tracks[].groupIndex가 범위를 벗어났습니다: ${t.groupIndex}`);
+    }
+  }
+  for (const e of data.trackEvents) {
+    if (e.trackIndex < 0 || e.trackIndex >= data.tracks.length) {
+      throw badRequestError(`trackEvents[].trackIndex가 범위를 벗어났습니다: ${e.trackIndex}`);
+    }
+  }
 
-  /** 트랙 그룹 생성 */
-  const createdGroups = await trackGroupModel.createMany(projectId, data.trackGroups);
+  return withTransaction(async (client) => {
+    await trackEventModel.deleteAllByProjectId(projectId, client);
+    await trackModel.deleteAllByProjectId(projectId, client);
+    await trackGroupModel.deleteAllByProjectId(projectId, client);
 
-  /** 트랙 생성 — groupIndex → 실제 groupId 매핑 */
-  const tracksWithGroupId = data.tracks.map((t) => ({
-    groupId: createdGroups[t.groupIndex].id,
-    name: t.name,
-    volume: t.volume,
-    pan: t.pan,
-    isMuted: t.isMuted,
-    order: t.order,
-  }));
+    const createdGroups = await trackGroupModel.createMany(
+      projectId,
+      data.trackGroups.map((g) => ({
+        type: g.type,
+        volume: g.volume,
+        isMuted: g.isMuted,
+        isSolo: g.isSolo,
+        order: g.order,
+      })),
+      client,
+    );
 
-  const createdTracks = await trackModel.createMany(projectId, tracksWithGroupId);
+    const createdTracks = await trackModel.createMany(
+      projectId,
+      data.tracks.map((t) => ({
+        groupId: createdGroups[t.groupIndex].id,
+        name: t.name,
+        volume: t.volume,
+        pan: t.pan,
+        isMuted: t.isMuted,
+        isSolo: t.isSolo,
+        order: t.order,
+      })),
+      client,
+    );
 
-  /** 트랙 이벤트 생성 — trackIndex → 실제 trackId 매핑 */
-  const eventsWithTrackId = data.trackEvents.map((e) => ({
-    trackId: createdTracks[e.trackIndex].id,
-    soundAssetId: e.soundAssetId,
-    startTime: e.startTime,
-    endTime: e.endTime,
-    offset: e.offset,
-    volumeOverride: e.volumeOverride,
-    fadeIn: e.fadeIn,
-    fadeOut: e.fadeOut,
-    isUserEdited: e.isUserEdited,
-  }));
+    const createdEvents = await trackEventModel.createMany(
+      projectId,
+      data.trackEvents.map((e) => ({
+        trackId: createdTracks[e.trackIndex].id,
+        soundAssetId: e.soundAssetId,
+        aiEventId: e.aiEventId ?? null,
+        startTime: e.startTime,
+        endTime: e.endTime,
+        offset: e.offset,
+        volumeOverride: e.volumeOverride,
+        fadeIn: e.fadeIn,
+        fadeOut: e.fadeOut,
+        isUserEdited: e.isUserEdited,
+      })),
+      client,
+    );
 
-  await trackEventModel.createMany(projectId, eventsWithTrackId);
+    const version = await projectSnapshotModel.nextVersion(projectId, client);
 
-  return { message: "저장 완료" };
+    const eventsByTrack = new Map<number, typeof createdEvents>();
+    for (const e of createdEvents) {
+      const arr = eventsByTrack.get(e.trackId) ?? [];
+      arr.push(e);
+      eventsByTrack.set(e.trackId, arr);
+    }
+    const tracksByGroup = new Map<number, typeof createdTracks>();
+    for (const t of createdTracks) {
+      const arr = tracksByGroup.get(t.groupId) ?? [];
+      arr.push(t);
+      tracksByGroup.set(t.groupId, arr);
+    }
+
+    const payload: SnapshotPayload = {
+      version,
+      trackGroups: createdGroups.map((g) => ({
+        id: g.id,
+        type: g.type,
+        volume: g.volume,
+        isMuted: g.isMuted,
+        isSolo: g.isSolo,
+        order: g.order,
+        tracks: (tracksByGroup.get(g.id) ?? []).map((t) => ({
+          id: t.id,
+          name: t.name,
+          volume: t.volume,
+          pan: t.pan,
+          isMuted: t.isMuted,
+          isSolo: t.isSolo,
+          order: t.order,
+          events: (eventsByTrack.get(t.id) ?? []).map((e) => ({
+            id: e.id,
+            soundAssetId: e.soundAssetId,
+            aiEventId: e.aiEventId,
+            startTime: e.startTime,
+            endTime: e.endTime,
+            offset: e.offset,
+            volumeOverride: e.volumeOverride,
+            fadeIn: e.fadeIn,
+            fadeOut: e.fadeOut,
+            isUserEdited: e.isUserEdited,
+          })),
+        })),
+      })),
+    };
+
+    const snapshot = await projectSnapshotModel.create(projectId, version, payload, client);
+
+    return {
+      id: snapshot.id,
+      version: snapshot.version,
+      createdAt: snapshot.createdAt,
+    };
+  });
 }

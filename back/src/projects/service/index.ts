@@ -6,3 +6,7 @@ export { deleteProject } from "./deleteProject";
 export { saveProject } from "./saveProject";
 export { loadProject } from "./loadProject";
 export { uploadVideo } from "./uploadVideo";
+export { getStatus } from "./getStatus";
+export { listSnapshots } from "./listSnapshots";
+export { restoreSnapshot } from "./restoreSnapshot";
+export { getSimilarSounds } from "./getSimilarSounds";
