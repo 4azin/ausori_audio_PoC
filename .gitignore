@@ -3,6 +3,10 @@
 Thumbs.db
 Desktop.ini
 
+# === Claude ===
+CLAUDE.md
+.claude/
+
 # === IDE ===
 .idea/
 .vscode/
@@ -47,6 +51,12 @@ coverage/
 *.lcov
 .nyc_output/
 
+# === Sound asset JSONL dumps ===
+# 001만 샘플로 추적, 002~ 는 용량 커서 제외
+**/sound_assets_*.jsonl
+!**/sound_assets_001.jsonl
+
+# === AI 작업 산출물 ===
 ai/output/
 ai/*.mp4
 ai/result.json
