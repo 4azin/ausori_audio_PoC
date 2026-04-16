@@ -4,9 +4,8 @@ export interface Project {
   userId: number;
   title: string;
   thumbnailUrl: string | null;
-  status: "uploading" | "analyzing" | "ready" | "rendering" | "done" | "failed";
+  status: "uploading" | "analyzing" | "ready" | "failed";
   originalVideoUrl: string | null;
-  finalVideoUrl: string | null;
   durationSeconds: number | null;
   createdAt: Date;
   updatedAt: Date;

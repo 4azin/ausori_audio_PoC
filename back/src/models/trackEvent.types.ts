@@ -4,6 +4,7 @@ export interface TrackEvent {
   projectId: number;
   trackId: number;
   soundAssetId: number;
+  aiEventId: number | null;
   startTime: number;
   endTime: number;
   offset: number;

@@ -1,48 +1,50 @@
+import { query, Runner } from "../config/db";
 import { Track } from "./track.types";
 
-// TODO: DB 연결 후 실제 쿼리로 교체 (현재 in-memory stub)
-const tracks: Track[] = [];
-let nextId = 1;
+const COLUMNS = `
+  id, project_id AS "projectId", group_id AS "groupId",
+  name, volume, pan, is_muted AS "isMuted", is_solo AS "isSolo", "order",
+  created_at AS "createdAt", updated_at AS "updatedAt"
+`;
 
-/** Track DB 접근 레이어 */
 export const trackModel = {
-
-  /** 프로젝트의 전체 트랙 조회 */
   async findAllByProjectId(projectId: number): Promise<Track[]> {
-    return tracks.filter((t) => t.projectId === projectId);
+    const res = await query<Track>(
+      `SELECT ${COLUMNS} FROM tracks
+       WHERE project_id = $1
+       ORDER BY group_id ASC, "order" ASC, id ASC`,
+      [projectId],
+    );
+    return res.rows;
   },
 
-  /** 프로젝트의 트랙 일괄 삭제 */
-  async deleteAllByProjectId(projectId: number): Promise<void> {
-    const ids = tracks
-      .filter((t) => t.projectId === projectId)
-      .map((t) => t.id);
-
-    for (const id of ids) {
-      const idx = tracks.findIndex((t) => t.id === id);
-      if (idx !== -1) tracks.splice(idx, 1);
-    }
+  async deleteAllByProjectId(projectId: number, runner?: Runner): Promise<void> {
+    const sql = `DELETE FROM tracks WHERE project_id = $1`;
+    if (runner) await runner.query(sql, [projectId]);
+    else await query(sql, [projectId]);
   },
 
-  /** 트랙 일괄 생성 */
   async createMany(
     projectId: number,
     data: Omit<Track, "id" | "projectId" | "createdAt" | "updatedAt">[],
+    runner?: Runner,
   ): Promise<Track[]> {
-    const now = new Date();
+    if (data.length === 0) return [];
 
-    const created = data.map((d) => {
-      const track: Track = {
-        id: nextId++,
-        projectId,
-        ...d,
-        createdAt: now,
-        updatedAt: now,
-      };
-      tracks.push(track);
-      return track;
-    });
+    const values: string[] = [];
+    const params: unknown[] = [];
+    let i = 1;
 
-    return created;
+    for (const t of data) {
+      values.push(`($${i++}, $${i++}, $${i++}, $${i++}, $${i++}, $${i++}, $${i++}, $${i++})`);
+      params.push(projectId, t.groupId, t.name, t.volume, t.pan, t.isMuted, t.isSolo, t.order);
+    }
+
+    const sql = `INSERT INTO tracks (project_id, group_id, name, volume, pan, is_muted, is_solo, "order")
+                 VALUES ${values.join(", ")}
+                 RETURNING ${COLUMNS}`;
+
+    const res = runner ? await runner.query(sql, params) : await query(sql, params);
+    return res.rows as Track[];
   },
 };

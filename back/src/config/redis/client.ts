@@ -1,9 +1,19 @@
 import { createClient } from "redis";
 
-/** Redis 클라이언트 설정 및 초기화 */
-const redisUrl = `redis://${process.env.REDIS_HOST || "localhost"}:${process.env.REDIS_PORT || 6379}`;
+/** Redis 연결 URL 생성 — password / TLS 지원 */
+function buildRedisUrl(): string {
+  const host = process.env.REDIS_HOST || "localhost";
+  const port = process.env.REDIS_PORT || 6379;
+  const password = process.env.REDIS_PASSWORD || "";
+  const useTls = process.env.REDIS_TLS === "true";
 
-export const redisClient = createClient({ url: redisUrl });
+  const protocol = useTls ? "rediss" : "redis";
+  const auth = password ? `:${encodeURIComponent(password)}@` : "";
+
+  return `${protocol}://${auth}${host}:${port}`;
+}
+
+export const redisClient = createClient({ url: buildRedisUrl() });
 
 redisClient.on("error", (err) => {
   console.error("Redis 연결 오류:", err);
