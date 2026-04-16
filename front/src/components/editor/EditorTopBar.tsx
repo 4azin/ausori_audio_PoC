@@ -10,7 +10,7 @@ export function EditorTopBar({ onExport }: EditorTopBarProps) {
     <header className="h-14 w-full bg-[#0a0a0c] border-b border-[#22222a] flex items-center justify-between px-6 shrink-0 z-10">
       <div className="flex items-center gap-6">
         <div className="flex items-center gap-1 font-black text-xl tracking-wide text-[#00f0ff] drop-shadow-[0_0_8px_rgba(0,240,255,0.6)]">
-          SonicFlow AI
+          AUSORI
         </div>
         <div className="flex items-center gap-2 text-sm text-gray-500">
           <span>Projects</span>
