@@ -1,7 +1,9 @@
 # Redis 통신 계약 (Backend ↔ AI Worker)
 
 백엔드(Node/TS)와 AI 워커(Python) 사이의 Redis 키/스트림 계약을 정의한다.
-샘플 파이프라인 출력은 `back/0415_1_김선태_pipeline_result.json` 참고.
+
+> **개정 이력**: 2026-04-15 1차 정합화 (camelCase 통일 / 단일 events[] / project_analyses 도입).
+> 2026-04-15 2차 정합화 (currentStage 5단계 본문 흡수, embedding 하이브리드 정책 확정, durationSeconds optional, §7 책임 분리 표 신설, 부록 B 통합).
 
 ---
 
@@ -26,6 +28,7 @@
 - `trackGroupType`: `"ambience" | "cinematic" | "dialogue_vo" | "foley" | "sfx" | "music"` (소문자/snake)
   - AI의 `track` 필드(`"ambience"`, `"sfx"` 등)가 이에 해당.
 - `status`: `"pending" | "scene_splitting" | "analyzing" | "refining_timing" | "matching" | "placing" | "done" | "failed"`
+  - AI 가 직접 갱신하는 값은 `pending / scene_splitting / analyzing / done / failed` 5종. 나머지는 백엔드 후처리 단계용 예약값(현재 미사용, 추후 확장).
 
 ### 0-5. 카테고리
 - `categoryPath`: 3-depth 배열 `[major, mid, sub]`, **taxonomy.json 원본 표기** (예: `["Ambience", "Urban", "Street"]`, `["SFX", "Cartoon", "Pop"]`).
@@ -73,7 +76,7 @@ XADD field name: `data` (JSON 문자열 전체를 담음).
 | `projectId` | int | 백엔드 `projects.id`. DB 반영 시 사용. |
 | `userId` | int | 소유자. 학습 데이터/감사 로그용. |
 | `videoPath` | string | **S3 key** (버킷명 제외). 워커는 `AWS_S3_BUCKET + videoPath`로 다운로드. |
-| `videoMeta.durationSeconds` | float | 영상 길이(초). 파이프라인 가드레일용. |
+| `videoMeta.durationSeconds` | float? | 영상 길이(초). **백엔드는 업로드 시점에 모를 수 있어 생략 가능**. 필요하면 AI 워커가 ffmpeg probe 로 채운다. 파이프라인 가드레일용. |
 | `videoMeta.mimeType` | string | MIME. `video/mp4` 등. |
 | `videoMeta.fileSize` | int | 바이트. |
 | `requestedAt` | ISO string | 요청 시각 (UTC). |
@@ -104,11 +107,23 @@ XADD field name: `data` (JSON 문자열 전체를 담음).
 | `projectId` | int | (옵션이지만 포함 권장: 백엔드 역참조 편의) |
 | `status` | enum | 위 §0-4 |
 | `progress` | int 0–100 | 전체 진행률 |
-| `currentStage` | string | 내부 세부 스테이지 이름 (예: `preprocessing`, `analyzing_soft`, `analyzing_hard`, `matching`) |
+| `currentStage` | string | 아래 표에 정의된 5개 값 중 하나. |
 | `message` | string? | 선택 — UI 표시용 상세. 에러 시 에러 요약 담아도 됨. |
 | `updatedAt` | ISO string | |
 
-실패 시: `status: "failed"`, `message`에 사용자 노출 가능한 에러 메시지.
+#### currentStage ↔ status 매핑 (AI 가 갱신하는 5단계 고정)
+
+| currentStage | 동시 status | 의미 |
+|---|---|---|
+| `preprocessing` | `pending` | S3 다운로드 / 프레임 추출 |
+| `global_scene_split` | `scene_splitting` | 글로벌 분석 (장면 분할) |
+| `analyzing_hard` | `analyzing` | foley analyzer |
+| `analyzing_soft` | `analyzing` | non-foley analyzer (ambience / cinematic / sfx / dialogue_vo / music) |
+| `done` | `done` | 분석 완료 — 직후 `XADD job:done` |
+
+> **백엔드 단계** (`matching` / `placing` / `refining_timing`) 는 AI 가 갱신하지 않는다. 백엔드가 `XREADGROUP` 후 자체 진행률을 표시할 경우에 한해 사용.
+
+실패 시: `status: "failed"`, `message`에 사용자 노출 가능한 에러 메시지. **`job:done` 은 발행하지 않는다** (§5).
 
 ---
 
@@ -138,7 +153,8 @@ XADD field name: `data` (JSON 문자열 전체를 담음).
 ```
 
 - **단일 `events[]` 배열로 통일**. 현재 샘플처럼 `foley/ambience/music/…` 6개로 분산하면 소비자가 case마다 분기해야 해서 불리. track 구분은 각 event의 `track` 필드로.
-- `trackGroups / tracks / trackEvents` 를 AI가 생성하지 않는다. **AI는 raw 분석 이벤트만 내놓고**, 백엔드가 (1) description 임베딩 생성, (2) vector search로 soundAssetId 선정, (3) track_groups/tracks/track_events 로 배치한다. 기존 `JobDoneMessage` 의 trackGroups/tracks/trackEvents 필드는 **제거** (백엔드 내부 로직으로 이관).
+- `trackGroups / tracks / trackEvents` 를 AI가 생성하지 않는다. **AI는 raw 분석 이벤트만 내놓고**, 백엔드가 (1) description 임베딩 생성, (2) vector search로 soundAssetId 선정, (3) track_groups/tracks/track_events 로 배치한다.
+- `events` 는 raw 의도 자산이므로 백엔드가 `project_analyses.raw_payload` 에 **JobDoneMessage 통째**를 JSONB 로 보존한다 (§4-4 참고).
 
 ### 4-2. AiEvent 단일 스키마
 
@@ -157,23 +173,26 @@ XADD field name: `data` (JSON 문자열 전체를 담음).
   "texture":       "one_shot",        // "one_shot" | "continuous" | "loop" | null
   "tags":          ["Material_Texture:Friction"],
 
-  "confidence":    0.7
+  "confidence":    0.7,
+
+  "embedding":     null
 }
 ```
 
 | 필드 | 타입 | 필수 | 설명 |
 |---|---|---|---|
 | `track` | enum | ✓ | 대분류 그룹 (§0-4) |
-| `description` | string | ✓ | 자연어 묘사 — 백엔드가 임베딩 생성 후 vector search에 사용 |
-| `categoryPath` | string[3] | ✓ | taxonomy 경로. 3-depth 강제. 매칭 실패 시 해당 이벤트는 스킵. |
+| `description` | string | ✓ | 자연어 묘사 — 임베딩 입력 |
+| `categoryPath` | string[3] | ✓ | taxonomy 경로. 3-depth 강제. 백엔드가 매칭 실패 시 해당 이벤트는 track_events 배치 스킵 (ai_events 는 INSERT). |
 | `startTime` | float(초) | ✓ | |
 | `endTime` | float(초) | ✓ | `> startTime` |
-| `peakTime` | float(초) | ◯ | foley/sfx 임팩트 정렬용. 생략 가능. |
+| `peakTime` | float(초) | ◯ | 임팩트 정렬용. **모든 트랙에서 optional 수용** (foley/sfx hit 외 트랙도 의미 있는 경우 채울 수 있음) |
 | `mood` | string[] | ◯ | 자유 태그. 빈 배열 허용. |
-| `energy` | enum? | ◯ | 위 3종 중 하나 또는 null |
-| `texture` | enum? | ◯ | 위 3종 중 하나 또는 null |
+| `energy` | `"low" \| "medium" \| "high" \| null` | ◯ | |
+| `texture` | `"one_shot" \| "continuous" \| "loop" \| null` | ◯ | |
 | `tags` | string[] | ◯ | `"Major:Sub"` 형태 권장. 빈 배열 허용. |
-| `confidence` | float 0~1 | ✓ | AI 자기 확신. 백엔드가 임계치 이하 이벤트 스킵 가능. |
+| `confidence` | float 0~1 | ✓ | AI 자기 확신. 백엔드가 임계치 이하 drop. **AI 측은 필터링하지 않고 모두 방출**. |
+| `embedding` | float[3072]? | ◯ | **하이브리드 정책** — AI 가 미리 계산해 보내면 사용, 없으면 백엔드가 description 으로 Gemini `text-embedding` 호출. 현재 AI 측 기본은 미생성(`null`/생략). |
 
 ### 4-3. 현재 샘플 대비 변경 요약
 
@@ -186,27 +205,45 @@ XADD field name: `data` (JSON 문자열 전체를 담음).
 | **jobId/projectId 누락** | **필수 추가**. 백엔드가 Redis 키(`{jobId}`)로도 매칭하지만, 페이로드에도 id를 포함해 역참조/로그를 단순화 |
 | `completedAt` 누락 | 추가 (지표/감사) |
 
-### 4-4. 백엔드 처리 흐름 (참고)
+### 4-4. 백엔드 처리 흐름 (현 구현 기준)
 
 ```
-1. XREADGROUP job:done → JobDoneMessage
-2. for each event:
-     - embedding = GeminiEmbeddings.embed(event.description)
-     - ai_events INSERT (project_id, groupType=event.track, description, embedding,
-                        suggestedStartTime, suggestedEndTime, analysis_batch)
-3. for each event (placement):
-     - soundAssetId = vectorSearch(embedding, filter by categoryPath)
-     - track_events INSERT (ai_event_id, sound_asset_id, start/end, …)
-4. track_groups / tracks 는 project 기본 6그룹 유지 or 필요 시 생성
-5. project_snapshots INSERT (JSONB), projects.status = "ready"
-6. XACK, job:* 키 cleanup
+0. XREADGROUP job:done  →  JobDoneMessage
+1. (트랜잭션 밖, 병렬) 각 event 별 외부 호출
+   - embedding = event.embedding ?? GeminiEmbeddings.embedDocument(event.description)
+   - resolved  = categoryModel.resolvePath(...event.categoryPath)
+                  → { majorId, midId, subId? } (실패 시 null)
+   - soundAssetId = soundAssetModel.vectorSearch(
+                       { majorId, midId, subId? }, embedding, k=1
+                     )[0]?.id ?? null
+2. (트랜잭션) 한 번에 DB 반영
+   2-1. project_analyses INSERT
+        (project_id, job_id, analysis_batch, video_summary, video_context,
+         raw_payload = <JobDoneMessage 통째>, telemetry, completed_at)
+   2-2. ai_events bulk INSERT  ← 매칭 실패한 이벤트도 의도 자산으로 보존
+        (project_id, analysis_id, group_type=event.track, description, embedding,
+         suggested_start_time, suggested_end_time, analysis_batch)
+   2-3. live-replace: track_events / tracks / track_groups DELETE
+   2-4. 기본 6 트랙 그룹 자동 생성 (ambience/cinematic/dialogue_vo/foley/sfx/music)
+   2-5. 사용된 group_type 별로 트랙 1개씩 생성
+   2-6. soundAssetId 매칭된 enriched 만 track_events INSERT
+        (track_id, sound_asset_id, ai_event_id, start_time, end_time, ...)
+   2-7. project_snapshots INSERT (JSONB), projects.status = "ready"
+3. XACK + jobRepository.cleanup(jobId, projectId)
+   → job:request:{jobId}, job:progress:{jobId}, project:job:{projectId} DEL
 ```
+
+요점:
+- `ai_events` 는 **append-only**. 유저가 track_events 를 삭제/이동해도 보존 → "이 클립과 유사한 사운드" 검색 시 원 의도 기반.
+- `project_analyses.raw_payload` 에 JobDoneMessage 전체를 그대로 박제. 재처리·디버깅·LLM 비용 추적용.
+- vector search 가 매칭 실패해도 ai_events 는 INSERT — track_events 만 스킵.
 
 ---
 
 ## 5. 에러 처리
 
 - AI 파이프라인 실패 → `JobProgress` 로 `status: "failed"` 설정 + `message` 채우기. `job:done` 은 **발행하지 않음**.
+- **백엔드는 `job:done` 만 보고 있으면 failed 를 절대 알 수 없다**. 따라서 `GET /api/projects/:id/status` 핸들러에서 `job:progress` 를 직접 읽어 `status="failed"` 면 `projects.status="failed"` 로 반영한다 (또는 별도 watcher). 현재 백엔드 구현은 폴링 측 미완 — 후속 작업.
 - 백엔드가 `JobDoneMessage` 처리 중 DB 오류 → XACK 하지 않고 consumer group에 pending 상태로 남김. 재시도 정책은 추후.
 - malformed JSON → 백엔드가 dead-letter 로 옮기고 `job:progress:{jobId}.status = "failed"` 로 표시.
 
@@ -214,11 +251,23 @@ XADD field name: `data` (JSON 문자열 전체를 담음).
 
 ## 6. 확정 전 미결 사항
 
-- [ ] AI가 **영상 전체 프레임 추출**이 끝나기 전 `JobProgress` 세분화 스테이지 목록 확정
-- [ ] `peakTime`이 foley 외에도 유용한가 (SFX hit 계열도 필요할 수도)
-- [ ] embedding을 **AI가 생성**할지 **백엔드가 생성**할지 — 현재 샘플엔 embedding 없음. 계약상 백엔드 생성으로 가정. 반대로 AI가 만들면 `embedding: float[3072]` 를 AiEvent에 추가하고 백엔드는 단순 INSERT.
-- [ ] `confidence` 임계치 (백엔드가 얼마 이하를 drop할지)
-- [ ] 유료/무료 플랜별 분석 품질 차등 파라미터 (JobRequest.priority)
+해결된 항목은 본문에 흡수했다. 남은 미결:
+
+- [ ] **`confidence` 임계치 값** — 정책은 "백엔드가 drop"으로 확정(§4-2). 실제 컷오프 값(예: `0.5`) 미정. 환경변수 `AI_MIN_CONFIDENCE` 로 운영 단계에서 조정 예정.
+- [ ] **유료/무료 플랜별 분석 품질 차등** — `JobRequest.priority` 또는 `presetPreference` 추가 여부.
+- [ ] **failed 폴링 간격 / watcher 구현 방식** — `/api/projects/:id/status` 호출 시 lazy fetch vs. 별도 daemon. 현재 백엔드 미구현 (§5).
+
+### 6-1. 확정 완료 (이력)
+
+| 결정 사항 | 위치 | 메모 |
+|---|---|---|
+| `currentStage` 5단계 고정 | §3 매핑 표 | AI 갱신 5종, 백엔드 단계 3종은 예약 |
+| `peakTime` 모든 트랙 optional | §4-2 | foley 외에도 채울 수 있음 |
+| `embedding` 하이브리드 (AI optional + 백엔드 fallback) | §4-2, §4-4 | 백엔드 `embedDocument` 자동 호출 |
+| `videoMeta.durationSeconds` optional | §2 | 업로드 시 모를 경우 AI 측 ffmpeg probe |
+| Redis 키 cleanup 백엔드 책임 | §7 | TTL/DEL 모두 백엔드 |
+| `ai_event_id` 백엔드 부여 | §0-3, §7 | AI 는 부여 안 함 |
+| `confidence` 필터링 백엔드 책임 | §4-2 | AI 는 모두 방출 |
 
 ---
 
@@ -262,20 +311,32 @@ r.xadd("job:done", {"data": json.dumps(payload, ensure_ascii=False)})
 
 ---
 
-## 부록 B. AI 측 구현 결정 (2026-04-15 추가)
+## 7. AI / 백엔드 책임 분리
 
-계약 §6 미결 항목 중 AI 워커 내부에서 확정 가능한 부분을 정리한다. 변경/이의 있으면 알려달라.
+| 항목 | AI | 백엔드 |
+|---|---|---|
+| `job:request:{jobId}` 발행 | — | ○ |
+| `job:request:{jobId}` 삭제 (TTL/DEL) | — | ○ |
+| `job:progress:{jobId}` SET (단계/실패 갱신) | ○ | — |
+| `job:progress:{jobId}` 폴링 / `failed` 감지 | — | ○ (§5) |
+| `job:progress:{jobId}` 삭제 | — | ○ |
+| `project:job:{projectId}` SET | — | ○ |
+| `project:job:{projectId}` 삭제 | — | ○ |
+| `job:done` STREAM consumer group `backend` 생성 | — | ○ (부팅 시 `XGROUP CREATE`) |
+| `job:done` XADD | ○ | — |
+| `job:done` XREADGROUP / XACK | — | ○ |
+| description embedding 생성 | optional | fallback 필수 (Gemini) |
+| `categoryPath` → category id 해석 | — | ○ |
+| `vector search` 기반 sound asset 매칭 | — | ○ |
+| `track_groups / tracks / track_events` 배치 | — | ○ |
+| `project_analyses.raw_payload` 보관 | — | ○ |
+| `confidence` 임계치 필터링 | — | ○ |
+| `ai_event_id` 부여 | — | ○ |
+| 시간 단위 초(float) 보장 | ○ | — (검증만) |
+| Wire JSON camelCase | ○ | ○ |
 
-- **Redis 키 수명**: AI 는 `job:request` / `job:progress` 를 **삭제하지 않는다**. TTL 설정과 소비 후 DEL 은 백엔드 책임. AI 는 SET(progress) / XADD(done) 만 수행.
-- **실패 경로**: 파이프라인 예외 시 `job:progress:{jobId}.status = "failed"` + `message` 에 에러 요약만 남기고 **`job:done` 은 발행하지 않는다** (§5 준수).
-- **`currentStage` 값 고정**:
-  - `preprocessing` — S3 다운로드/프레임 추출
-  - `global_scene_split` — global analyzer (status=`scene_splitting`)
-  - `analyzing_hard` — foley analyzer (status=`analyzing`)
-  - `analyzing_soft` — non-foley analyzer (status=`analyzing`)
-  - `done` — 최종 (status=`done`)
-  - `matching` / `placing` / `refining_timing` 은 백엔드 단계이므로 AI 는 갱신하지 않음.
-- **시간 단위**: foley 포함 모든 이벤트의 `startTime / endTime / peakTime` 은 **초(float)**. 프롬프트 스키마에 단위를 명시하고 파이프라인 후처리에서 변환하지 않는다.
-- **`confidence`**: AI 는 필터링 없이 그대로 방출. 임계치 기반 drop 은 백엔드.
-- **`job:done` consumer group**: `backend` 는 백엔드가 선 생성한다고 가정. AI 는 `XADD job:done * data <json>` 만.
-- **`ai_event_id` / `embedding`**: AI 는 부여/생성하지 않는다 (§4-2, §6 가정 준수).
+---
+
+## 부록 B. (구) AI 측 결정 사항 — 본문 흡수 완료
+
+`currentStage` 표 → §3, embedding 정책 → §4-2, 책임 분리 → §7, 시간 단위 → §0-2, confidence → §4-2, key cleanup → §7. 별도 부록 유지하지 않음.
