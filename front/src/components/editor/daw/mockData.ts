@@ -18,10 +18,10 @@ export const MOCK_TRACKS: Track[] = [
     videoSrc: '/sample/samplevideo.mp4',
     pan: 0, vol: 1, mute: false,
     clips: [
-        {
-            id: 'video-main', name: 'Original Video', startTime: 0, duration: 80,
-            sourceOffset: 0, sourceDuration: 80, color: '#3a3a45'
-        }
+      {
+        id: 'video-main', name: 'Original Video', startTime: 0, duration: 80,
+        sourceOffset: 0, sourceDuration: 80, color: '#3a3a45'
+      }
     ],
     subTracks: [],
   },
@@ -109,30 +109,20 @@ export const MOCK_TRACKS: Track[] = [
         pan: 0, vol: 0.6, mute: false,
         clips: [
           {
-              id: 'amb-2', name: 'Cars Passing', startTime: 10, duration: 15,
-              sourceOffset: 0, sourceDuration: 20, color: '#9400d3', audioSrc: `${AMB_DIR}/freesound_20049_cars pass by.wav.mp3`,
+            id: 'amb-2', name: 'Cars Passing', startTime: 10, duration: 15,
+            sourceOffset: 0, sourceDuration: 20, color: '#9400d3', audioSrc: `${AMB_DIR}/freesound_20049_cars pass by.wav.mp3`,
           }
         ]
       },
       {
-        id: 'amb-sub-2', name: 'Weather & Night', type: 'audio', color: '#b500ff', io: 'Stereo Mix',
-        pan: 0, vol: 0.7, mute: false,
+        id: 'amb-sub-3', name: 'Social', type: 'audio', color: '#b500ff', io: 'Stereo Mix',
+        pan: 0, vol: 0.5, mute: false,
         clips: [
           {
-            id: 'amb-3', name: 'Rainy Night', startTime: 35, duration: 25,
-            sourceOffset: 0, sourceDuration: 40, color: '#b500ff', audioSrc: `${AMB_DIR}/freesound_55831_rain.wav.mp3`,
-          },
+            id: 'amb-5', name: 'Dinner Party', startTime: 60, duration: 20,
+            sourceOffset: 0, sourceDuration: 40, color: '#b500ff', audioSrc: `${AMB_DIR}/freesound_72848_Posh dinner party.wav.mp3`,
+          }
         ]
-      },
-      {
-          id: 'amb-sub-3', name: 'Social', type: 'audio', color: '#b500ff', io: 'Stereo Mix',
-          pan: 0, vol: 0.5, mute: false,
-          clips: [
-            {
-                id: 'amb-5', name: 'Dinner Party', startTime: 60, duration: 20,
-                sourceOffset: 0, sourceDuration: 40, color: '#b500ff', audioSrc: `${AMB_DIR}/freesound_72848_Posh dinner party.wav.mp3`,
-            }
-          ]
       }
     ],
   },
@@ -193,8 +183,8 @@ export const MOCK_TRACKS: Track[] = [
             sourceOffset: 0, sourceDuration: 5, color: '#d455ff', audioSrc: `${FOLEY_DIR}/freesound_87565_gulps.wav.ogg`,
           },
           {
-              id: 'foley-2', name: 'Gulps 2', startTime: 53, duration: 3,
-              sourceOffset: 0, sourceDuration: 5, color: '#d455ff', audioSrc: `${FOLEY_DIR}/freesound_87565_gulps.wav.ogg`,
+            id: 'foley-2', name: 'Gulps 2', startTime: 53, duration: 3,
+            sourceOffset: 0, sourceDuration: 5, color: '#d455ff', audioSrc: `${FOLEY_DIR}/freesound_87565_gulps.wav.ogg`,
           }
         ]
       },
