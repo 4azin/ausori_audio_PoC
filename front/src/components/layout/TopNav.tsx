@@ -1,7 +1,12 @@
+'use client';
+
 import { Button } from '../ui/Button';
 import Link from 'next/link';
+import { useProjectStore } from '@/stores/useProjectStore';
 
 export function TopNav() {
+  const { openUploadModal } = useProjectStore();
+
   return (
     <header className="flex h-16 items-center justify-between px-6 border-b border-border bg-[#1c1c1c]">
       <div className="flex items-center gap-4">
@@ -17,7 +22,7 @@ export function TopNav() {
       </div>
 
       <div className="flex items-center gap-3">
-        <Button size="sm" className="bg-[#446bdf] hover:bg-[#5277e9] rounded px-4 text-sm font-medium">+ Project</Button>
+        <Button size="sm" onClick={openUploadModal} className="bg-[#446bdf] hover:bg-[#5277e9] rounded px-4 text-sm font-medium">+ Project</Button>
         <Button size="sm" variant="outline" className="border-transparent hover:bg-white/10 rounded px-4 text-sm text-[#e0e0e0]">Share</Button>
         <div className="w-8 h-8 rounded-full bg-gray-700 ml-4 border border-gray-600 overflow-hidden cursor-pointer hover:ring-2 hover:ring-gray-500 transition-all">
           <svg className="w-full h-full text-gray-400 mt-1" fill="currentColor" viewBox="0 0 24 24">

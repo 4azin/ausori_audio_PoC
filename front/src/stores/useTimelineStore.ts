@@ -6,7 +6,7 @@ export const useTimelineStore = create<TimelineState>((set) => ({
   // ── 시간 축 ──
   pixelsPerSecond: 66.67,     // 100px = 1.5초 → ~66.67 px/sec (기존 100px 간격 유지)
   scrollX: 0,
-  duration: 120,              // 2분
+  duration: 80,              // 1분 20초 (영상 길이에 맞춤)
 
   // ── 플레이헤드 ──
   playheadTime: 0,

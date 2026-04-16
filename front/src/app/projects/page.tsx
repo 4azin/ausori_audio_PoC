@@ -1,5 +1,6 @@
 import { TopNav } from '@/components/layout/TopNav';
 import { ProjectGrid } from '@/components/projects/ProjectGrid';
+import { ProjectUploadModal } from '@/components/projects/ProjectUploadModal';
 
 export default function ProjectsPage() {
   return (
@@ -16,6 +17,8 @@ export default function ProjectsPage() {
           <path d="M12 17h.01"/>
         </svg>
       </div>
+      
+      <ProjectUploadModal />
     </div>
   );
 }
