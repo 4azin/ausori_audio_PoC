@@ -16,7 +16,9 @@ export {
   ProjectAnalysisSummary,
 } from "./projectAnalysis.types";
 export { soundAssetModel } from "./soundAsset.model";
-export { SoundAsset } from "./soundAsset.types";
+export { SoundAsset, SoundAssetFull } from "./soundAsset.types";
+export { soundDesignerModel } from "./soundDesigner.model";
+export { SoundDesigner } from "./soundDesigner.types";
 export { categoryModel } from "./category.model";
 export {
   CategoryMajor,
