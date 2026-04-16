@@ -8,6 +8,8 @@ generate_content에 전달할 수 있는 file 객체를 반환한다.
 from __future__ import annotations
 
 import os
+import shutil
+import tempfile
 import time
 
 from google import genai
@@ -45,7 +47,29 @@ def upload_video(client: genai.Client, video_path: str, *, poll_interval: float 
         print(f"[upload] 영상 업로드 중... {video_path} ({file_size / 1024:.0f}KB)")
         t0 = time.perf_counter()
 
-        video_file = client.files.upload(file=video_path)
+        # 파일명에 비ASCII(한글 등)가 있으면 httpx 헤더 인코딩 에러 발생.
+        # 임시 ASCII 파일명으로 복사 후 업로드.
+        _, ext = os.path.splitext(video_path)
+        needs_copy = False
+        try:
+            os.path.basename(video_path).encode("ascii")
+        except UnicodeEncodeError:
+            needs_copy = True
+
+        if needs_copy:
+            tmp = tempfile.NamedTemporaryFile(suffix=ext, delete=False)
+            tmp.close()
+            shutil.copy2(video_path, tmp.name)
+            upload_path = tmp.name
+        else:
+            upload_path = video_path
+
+        try:
+            video_file = client.files.upload(file=upload_path)
+        finally:
+            if needs_copy:
+                os.unlink(upload_path)
+
         upload_sec = time.perf_counter() - t0
         print(f"[upload] 업로드 완료: {video_file.name} (state={video_file.state}, {upload_sec:.1f}s)")
 
