@@ -26,44 +26,46 @@ GEMINI_API_VIDEO = config.GEMINI_API_VIDEO
 GEMINI_MODEL = config.GEMINI_MODEL_GLOBAL
 
 PROMPT = """\
-당신은 영상 분석가다.
-입력된 영상 전체를 처음부터 끝까지 시청한 뒤, 영상의 흐름을 기준으로 장면(scene)을 분할하라.
+You are a video analyst.
+Watch the entire input video from start to finish, then split it into scenes based on the flow of the video.
 
-[목표]
-- 전체 영상을 여러 개의 scene으로 나눈다.
-- 각 scene은 하나의 의미 있는 맥락 단위여야 한다.
-- 단, 너무 짧거나 어색한 분할은 피하고 다음 길이 제한을 따른다.
-  - 최대 길이: 30초
+[Goal]
+- Split the entire video into multiple scenes.
+- Each scene must be a single meaningful contextual unit.
+- Avoid splits that are too short or awkward, and follow the length constraint below:
+  - Maximum length: 30 seconds
 
-[분할 기준]
-- 장면 전환, 화제 변화, 행동 변화, 장소 변화, 시점 변화, 분위기 변화, 사건의 시작/종료를 기준으로 scene을 나눈다.
-- 단순히 몇 초마다 기계적으로 자르지 말고, 의미상 자연스럽게 나눈다.
-- 불필요하게 잘게 쪼개지 말고, 후속 검색/편집/요약에 유용한 수준으로 분할한다.
+[Splitting Criteria]
+- Split on scene transitions, topic changes, action changes, location changes, perspective shifts, mood changes, or the start/end of events.
+- Do not mechanically cut every few seconds — split naturally by meaning.
+- Do not over-segment. Split at a granularity useful for downstream search, editing, and summarization.
 
-[출력 내용]
-1. 영상 전체에 대한 한 줄 요약
-2. 영상 전체 맥락 설명
-3. scene 목록
-4. 각 scene마다:
+[Output Content]
+1. A one-line summary of the entire video
+2. An overall context description of the video
+3. A list of scenes
+4. For each scene:
    - scene_id
    - start_time
    - end_time
-   - scene_context // 전체 영상에서 이 구간이 무엇? - 맥락
-   - scene_summary // 이 구간에 대한 요약
+   - scene_context // What role does this segment play in the overall video?
+   - scene_summary // A summary of this segment
    - key_events
    - visual_cues
 
-[출력 형식]
-- 반드시 JSON만 출력한다.
-- 마크다운 코드블록을 사용하지 않는다.
-- 설명 문장이나 부가 텍스트를 JSON 바깥에 쓰지 않는다.
-- time은 초 단위 숫자(float 또는 int)로 출력한다.
-- scene_id는 1부터 시작하는 정수다.
-- scene들은 시간순으로 정렬한다.
-- scene 간 시간은 겹치지 않아야 한다.
-- 전체 scene은 영상의 처음부터 끝까지 최대한 빈틈 없이 커버해야 한다.
+[Language]
+- All output text (video_summary, video_context, scene_summary, scene_context, key_events, visual_cues) MUST be in English.
 
-[JSON 스키마]
+[Output Format]
+- Output ONLY valid JSON. No markdown code blocks.
+- Do not write any explanatory text outside the JSON.
+- Times are in seconds (float or int).
+- scene_id starts at 1 (integer).
+- Scenes must be sorted chronologically.
+- Scene time ranges must not overlap.
+- Scenes should cover the video from start to end as completely as possible.
+
+[JSON Schema]
 {
   "video_summary": "string",
   "video_context": "string",
@@ -72,10 +74,10 @@ PROMPT = """\
       "scene_id": 1,
       "start_time": 0.0,
       "end_time": 15.0,
-      "scene_summary": "장면 한 줄 요약",
-      "scene_context": "이 장면이 전체 영상에서 어떤 역할을 하는지 설명",
-      "key_events": ["주요 행동1", "주요 행동2"],
-      "visual_cues": ["장소", "인물", "화면 변화"]
+      "scene_summary": "One-line scene summary",
+      "scene_context": "Role of this scene within the overall video",
+      "key_events": ["Key action 1", "Key action 2"],
+      "visual_cues": ["Location", "Characters", "Visual transition"]
     }
   ]
 }
@@ -114,7 +116,7 @@ def analyze(video_path: str) -> dict:
     video_file = video_upload.upload_video(client, video_path)
 
     try:
-        context = f"[영상 정보]\n총 길이: {duration:.1f}초\n\n"
+        context = f"[Video Info]\nDuration: {duration:.1f}s\n\n"
         prompt = llm_client.get_prompt("global_analyzer", fallback=PROMPT)
         contents = [context + prompt.text, video_file]
 

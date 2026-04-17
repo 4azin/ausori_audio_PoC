@@ -29,88 +29,90 @@ GEMINI_API_VIDEO = config.GEMINI_API_VIDEO
 GEMINI_MODEL = config.GEMINI_MODEL_NON_FOLEY
 
 PROMPT = """\
-당신은 영상 scene을 분석하여, 해당 scene에 어울리는 Non-Foley 사운드 트랙 배치를 결정하는 전문 사운드 디자이너다.
-단순히 카테고리를 고르는 것이 아니라, 실제 사운드 에디터가 작업 지시서를 쓰듯 구체적으로 서술하라.
+You are a professional sound designer who analyzes video scenes and determines Non-Foley sound track placement for each scene.
+Rather than simply picking categories, describe concretely as if writing a work order for an actual sound editor.
 
-[입력]
-입력으로는 2가지가 주어진다.
-1. 잘린 scene 영상
-2. 해당 scene에 대한 메타 정보 (아래 [Scene 메타데이터] 참고)
+[Input]
+Two inputs are provided:
+1. A trimmed scene video
+2. Metadata about the scene (see [Scene Metadata] below)
 
-[분석 대상 트랙]
-아래 5개 트랙에 대해 각각 배치 여부와 구간을 결정하라.
-트랙 간 겹침은 허용된다. 동시에 여러 트랙이 존재할 수 있다.
+[Target Tracks]
+Determine placement for each of the following 5 tracks.
+Overlapping tracks are allowed — multiple tracks can exist simultaneously.
 
-1. ambience    — 공간 배경음. 장소/환경에서 자연스럽게 깔리는 소리.
-2. music       — BGM, 스코어, 징글 등.
-3. cinematic   — 라이저, 히트, 우쉬, 드론, 트랜지션 등 연출용 효과.
-4. sfx         — 맥락형 효과음. 군중 소리, 먼 차량, 공간 강조 효과 등.
-                 (Foley처럼 정밀한 행위성 소리는 제외)
-5. dialogue_vo — 대화, 나레이션, 보이스오버 제안.
+1. ambience    — Spatial background sound. Naturally present in the location/environment.
+2. music       — BGM, score, jingles, etc.
+3. cinematic   — Risers, hits, whooshes, drones, transitions, and other production effects.
+4. sfx         — Contextual sound effects. Crowd noise, distant vehicles, spatial emphasis, etc.
+                 (Excludes precise action-based sounds like Foley)
+5. dialogue_vo — Dialogue, narration, voiceover suggestions.
 
-[목표]
-각 트랙에 대해:
-- 이 scene에서 해당 트랙이 필요한지 판단하라.
-- 필요하다면 scene 내 어느 구간에 배치할지 결정하라.
-- 하나의 트랙이 scene 내에서 여러 구간으로 나뉠 수 있다면 복수 항목으로 분리하라.
-- 필요 없는 트랙은 출력에서 생략하라.
+[Goal]
+For each track:
+- Determine whether the track is needed in this scene.
+- If needed, decide where within the scene to place it.
+- If a single track should span multiple segments within the scene, split into multiple items.
+- Omit tracks that are not needed.
 
-[타임스탬프 규칙]
-- start_time, end_time은 "현재 입력된 scene 내부 기준 상대 시간"으로 출력한다.
-- 단위는 초(float)다.
-- 예를 들어 scene이 원본 영상의 30.0초~45.0초 구간이어도,
-  출력 시간은 scene 내부 0.0초부터 계산한다.
-- 정밀한 ms 단위까지 맞출 필요 없다. 0.5초 단위로 러프하게 표기해도 된다.
+[Timestamp Rules]
+- start_time and end_time are relative to the current scene (not the original video).
+- Unit is seconds (float).
+- For example, if the scene covers 30.0s–45.0s of the original video, output times start from 0.0s within the scene.
+- Millisecond precision is not required. Rough 0.5s granularity is acceptable.
 
-[category_path 규칙]
-- category_path는 반드시 아래 [taxonomy - Non-Foley] 에서 선택한다.
-- 형식: ["대분류", "Mid", "Leaf"] — 3단계로 표기한다.
-- 정확한 Leaf가 없으면 가장 가까운 항목을 선택한다.
-- Foley 항목은 선택하지 마라.
+[category_path Rules]
+- category_path MUST be selected from [taxonomy - Non-Foley] below.
+- Format: ["Major", "Mid", "Leaf"] — 3 levels.
+- If no exact Leaf matches, select the closest item.
+- Do NOT select Foley items.
 
-[confidence 규칙]
-- confidence는 0.0 ~ 1.0 사이 실수다.
-- 이 scene에서 해당 트랙 배치가 얼마나 적절한지를 나타낸다.
-- 0.85 이상: 맥락상 거의 확실히 필요함
-- 0.60~0.84: 합리적으로 어울림
-- 0.35~0.59: 선택적으로 고려 가능
-- 0.35 미만: 권장하지 않지만 가능성은 있음
+[confidence Rules]
+- confidence is a float between 0.0 and 1.0.
+- Indicates how appropriate the track placement is for this scene.
+- 0.85+: Almost certainly needed given the context
+- 0.60–0.84: Reasonably fitting
+- 0.35–0.59: Optionally considerable
+- Below 0.35: Not recommended but possible
 
-[description 규칙]
-- 어떤 소리인지, 왜 이 장면에 어울리는지, 어떤 질감/분위기인지 구체적으로 서술한다.
-- 단순히 "카페 배경음"처럼 짧게 끝내지 말고, 실제 소리의 성격까지 묘사하라.
-- 예시:
-  - 나쁨: "카페 실내 배경음"
-  - 좋음: "카페 내부의 낮은 웅성거림과 가벼운 컵 소리가 섞인 생활감 있는 배경음. 조용하고 아늑한 분위기를 강조."
-  - 나쁨: "로파이 BGM"
-  - 좋음: "느슨한 드럼 루프와 따뜻한 피아노 코드 위주의 로파이. 편안하고 일상적인 감성을 강조하며 영상 전체를 부드럽게 감싸는 역할."
+[description Rules]
+- Describe specifically: what the sound is, why it fits this scene, and its texture/mood.
+- Do not end with short generic labels — describe the actual character of the sound.
+- Examples:
+  - Bad:  "Cafe background sound"
+  - Good: "Low murmur of conversations mixed with gentle cup clinking inside a cafe. Creates a cozy, lived-in atmosphere."
+  - Bad:  "Lo-fi BGM"
+  - Good: "Relaxed drum loop with warm piano chords in a lo-fi style. Emphasizes a comfortable, everyday feeling and gently wraps the entire scene."
 
-[mood 규칙]
-- mood는 이 소리가 만들어내는 감정/분위기 키워드 1~3개다.
-- 예: ["밝음", "경쾌함"], ["긴장감", "서늘함"], ["따뜻함", "아늑함"]
+[mood Rules]
+- mood is 1–3 emotion/atmosphere keywords for this sound.
+- Keywords MUST be in English.
+- Examples: ["bright", "cheerful"], ["tense", "cold"], ["warm", "cozy"]
 
-[energy 규칙]
-- energy는 소리의 에너지 레벨이다.
-- 반드시 "low" / "medium" / "high" 중 하나만 선택한다.
-- low: 잔잔하고 배경에 깔리는 소리
-- medium: 존재감이 있으나 압도적이지 않은 소리
-- high: 강렬하고 전면에 드러나는 소리
+[energy Rules]
+- energy is the sound's energy level.
+- Must be exactly one of: "low" / "medium" / "high"
+- low: Calm, sits in the background
+- medium: Present but not overwhelming
+- high: Intense and foregrounded
 
-[texture 규칙]
-- texture는 소리의 시간적 성격이다.
-- 반드시 "continuous" / "periodic" / "one_shot" 중 하나만 선택한다.
-- continuous: 끊임없이 이어지는 소리 (ambience, drone 등)
-- periodic: 일정 패턴으로 반복되는 소리 (BGM 루프, 리듬 등)
-- one_shot: 한 번 터지고 끝나는 소리 (hit, whoosh, 스팅어 등)
+[texture Rules]
+- texture is the temporal character of the sound.
+- Must be exactly one of: "continuous" / "periodic" / "one_shot"
+- continuous: Uninterrupted sound (ambience, drone, etc.)
+- periodic: Repeating pattern (BGM loop, rhythm, etc.)
+- one_shot: Single burst (hit, whoosh, stinger, etc.)
 
-[출력 규칙]
-- 반드시 JSON만 출력한다.
-- 마크다운 코드블록을 사용하지 않는다.
-- 설명 문장이나 부가 텍스트를 JSON 바깥에 쓰지 않는다.
-- 필요 없는 트랙은 tracks 배열에서 생략한다.
-- tracks가 하나도 없으면 빈 배열을 반환한다.
+[Language]
+- All output text (description, mood) MUST be in English.
 
-[출력 형식]
+[Output Rules]
+- Output ONLY valid JSON. No markdown code blocks.
+- Do not write any explanatory text outside the JSON.
+- Omit unneeded tracks from the tracks array.
+- If no tracks are needed, return an empty array.
+
+[Output Format]
 {
   "scene_id": 1,
   "tracks": [
@@ -119,8 +121,8 @@ PROMPT = """\
       "start_time": 0.0,
       "end_time": 19.0,
       "category_path": ["Ambience", "Interior", "Cafe"],
-      "description": "카페 내부의 낮은 웅성거림과 가벼운 컵 소리가 섞인 배경음. 아늑하고 생활감 있는 공간감을 만들어줌.",
-      "mood": ["아늑함", "일상적"],
+      "description": "Low murmur of conversations mixed with gentle cup clinking inside a cafe. Creates a cozy, lived-in spatial presence.",
+      "mood": ["cozy", "everyday"],
       "energy": "low",
       "texture": "continuous",
       "confidence": 0.91
@@ -130,8 +132,8 @@ PROMPT = """\
       "start_time": 0.0,
       "end_time": 19.0,
       "category_path": ["Music", "BGM", "Lo_fi"],
-      "description": "느슨한 드럼 루프와 따뜻한 피아노 코드 위주의 로파이 BGM. 편안하고 일상적인 감성을 강조하며 영상 전체를 부드럽게 감쌈.",
-      "mood": ["따뜻함", "경쾌함"],
+      "description": "Relaxed drum loop with warm piano chords in a lo-fi style. Emphasizes a comfortable, everyday feeling and gently wraps the entire scene.",
+      "mood": ["warm", "cheerful"],
       "energy": "low",
       "texture": "periodic",
       "confidence": 0.76
@@ -141,8 +143,8 @@ PROMPT = """\
       "start_time": 17.5,
       "end_time": 19.0,
       "category_path": ["Cinematic", "Transition", "Swoosh"],
-      "description": "장면 전환 직전 빠르게 스쳐 지나가는 우쉬 효과. 다음 장면으로의 전환을 청각적으로 강조.",
-      "mood": ["전환감", "역동적"],
+      "description": "A quick swoosh effect just before the scene transition. Audibly emphasizes the cut to the next scene.",
+      "mood": ["transitional", "dynamic"],
       "energy": "medium",
       "texture": "one_shot",
       "confidence": 0.62
@@ -181,7 +183,7 @@ Dialogue_VO:
   Announcement: [Public_Address, Broadcast, Intercom]
   Synthetic: [AI, Robot, Vocoder]
 
-SFX (맥락형만 — 행위성 소리 제외):
+SFX (contextual only — excludes action-based sounds):
   Human: [Breath, Scream, Laugh, Grunt, Cough, Cry]
   Animal: [Dog, Cat, Bird, Horse, Insect, Monster]
   Electronic: [Glitch, Digital, Synth, Alarm, Computer]
@@ -243,9 +245,9 @@ def analyze_scene(
     try:
         scene_meta_str = json.dumps(scene, ensure_ascii=False, indent=2)
         context = (
-            f"[Scene 메타데이터]\n{scene_meta_str}\n\n"
-            f"[영상 정보]\n"
-            f"scene 길이: {duration:.1f}초\n\n"
+            f"[Scene Metadata]\n{scene_meta_str}\n\n"
+            f"[Video Info]\n"
+            f"Scene duration: {duration:.1f}s\n\n"
         )
         prompt = llm_client.get_prompt("non_foley_analyzer", fallback=PROMPT)
         contents = [context + prompt.text, video_file]

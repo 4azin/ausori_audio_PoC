@@ -25,20 +25,20 @@ GEMINI_API_VIDEO = config.GEMINI_API_VIDEO
 GEMINI_MODEL = config.GEMINI_MODEL_FOLEY
 
 PROMPT = """\
-당신은 짧게 분할된 영상 scene을 분석하여, 해당 scene 안에서 발생했을 가능성이 있는 Foley 이벤트를 가능한 한 빠짐없이 구조화하는 분석기다.
+You are an analyzer that examines short video scenes and extracts all possible Foley events as comprehensively as possible.
 
-과소검출(false negative)보다 과검출(false positive)이 더 낫다.
-확신이 낮더라도 Foley 가능성이 있으면 일단 추출하고, confidence 값으로 확신 정도를 구분하라.
+False positives are preferred over false negatives.
+Even if confidence is low, extract the event if there is any Foley possibility, and use the confidence value to indicate certainty.
 
-[입력]
-입력으로는 2가지가 주어진다.
-1. 잘린 scene 영상
-2. 해당 scene에 대한 메타 정보 (아래 [Scene 메타데이터] 참고)
+[Input]
+Two inputs are provided:
+1. A trimmed scene video
+2. Metadata about the scene (see [Scene Metadata] below)
 
-[목표]
-scene 내부에서 발생했을 가능성이 있는 Foley 이벤트를 이벤트 단위로 최대한 빠짐없이 추출하라.
+[Goal]
+Extract all possible Foley events within the scene, as completely as possible, on a per-event basis.
 
-각 이벤트마다 반드시 아래 필드를 포함하라:
+Each event MUST include these fields:
 - start_time
 - end_time
 - peak_time
@@ -47,71 +47,75 @@ scene 내부에서 발생했을 가능성이 있는 Foley 이벤트를 이벤트
 - description
 - confidence
 
-[중요 정의]
-- Foley 이벤트는 사람의 동작, 신체 움직임, 사물 접촉, 재질 마찰, 음식 섭취, 액체 취급 등에서 발생하는 구체적 행위성 소리다.
-- Music, Dialogue/VO, Ambience, Cinematic, 일반적인 비현실적 SFX는 제외한다.
+[Key Definitions]
+- A Foley event is a concrete action-based sound arising from human movement, body motion, object contact, material friction, food consumption, liquid handling, etc.
+- Exclude Music, Dialogue/VO, Ambience, Cinematic, and unrealistic SFX.
 
-[시간 규칙]
-- 모든 event의 start_time, peak_time, end_time은 "현재 입력된 scene 내부 기준 상대 시간"으로 출력한다.
-- 단위는 초(float) 이다. ms 가 아니다. 소수 둘째 자리까지 권장. (예: 2.45, 0.17)
-- 예를 들어 scene이 원본 영상의 30.0초~45.0초 구간이어도, 출력 시간은 scene 내부 0.0초부터 계산한다.
-- 반드시 다음을 만족해야 한다:
-  start_time <= peak_time <= end_time
+[Time Rules]
+- All event start_time, peak_time, end_time are relative to the current scene (not the original video).
+- Unit is seconds (float). Two decimal places recommended (e.g., 2.45, 0.17).
+- For example, if the scene covers 30.0s–45.0s of the original video, output times start from 0.0s within the scene.
+- Must satisfy: start_time <= peak_time <= end_time
 
-[이벤트 분할 규칙]
-- 하나의 연속된 동일 행위는 하나의 이벤트로 묶는다.
-- 청각적으로 하이라이트가 분명히 다르면 별도 이벤트로 분리한다.
-- 예:
-  - 당근을 여러 번 연속으로 씹으면, 각 깨무는 순간이 구분될 경우 separate event 가능
-  - 컵을 집고 내려놓는 과정에서 실제 소리 하이라이트가 "탁" 내려놓는 순간이면 그 중심으로 하나의 event 생성
-- 보이는 행위 중 Foley 가능성이 있으면, 확실하지 않더라도 후보 이벤트로 포함하라.
-- 단, 완전히 동일한 이벤트를 중복 생성하지는 마라.
+[Event Splitting Rules]
+- Group a single continuous identical action into one event.
+- If auditory highlights are clearly distinct, split into separate events.
+- Examples:
+  - Chewing a carrot multiple times in succession — separate events if each bite is distinguishable.
+  - Picking up and setting down a cup — if the sound highlight is the "thud" of setting it down, create one event centered on that moment.
+- If a visible action has Foley potential, include it as a candidate even if uncertain.
+- Do not create exact duplicate events.
 
-[peak_time 규칙]
-- peak_time은 그 이벤트에서 소리가 가장 강조되는 찰나의 시점이다.
-- 예:
-  - 당근을 깨무는 순간
-  - 문이 닫히며 맞닿는 순간
-  - 물방울이 표면에 닿는 순간
-  - 컵이 테이블에 닿는 순간
+[peak_time Rules]
+- peak_time is the instant when the sound is most emphasized in the event.
+- Examples:
+  - The moment of biting into a carrot
+  - The moment a door latches shut
+  - The moment a water droplet hits a surface
+  - The moment a cup contacts the table
 
-[category_path 규칙]
-- category_path 는 반드시 3단계 배열이다: ["Foley", "<Mid>", "<Leaf>"]
-- 첫 원소는 항상 "Foley" 로 고정한다.
-- Mid / Leaf 는 아래 [taxonomy.json - Foley] 에서만 선택한다.
-- 정확한 Leaf 가 없으면 가장 가까운 Foley 항목을 선택한다.
+[category_path Rules]
+- category_path MUST be a 3-level array: ["Foley", "<Mid>", "<Leaf>"]
+- The first element is always "Foley".
+- Mid / Leaf MUST be selected only from [taxonomy.json - Foley] below.
+- If no exact Leaf matches, select the closest Foley item.
 
-[tags 규칙]
-- tags 는 문자열 배열이다. 최대 3개.
-- 각 태그는 "Mid:Leaf" 형식으로 출력한다 (예: "Food_Drink:Chew", "Door_Window:Close").
-- category_path 의 Mid/Leaf 와 일치시키되, 부가적으로 연관된 Foley 태그를 함께 넣어도 된다.
-- 설명(description)에는 왜 해당 카테고리/태그를 선택했는지 드러나도록 구체적으로 쓴다.
+[tags Rules]
+- tags is a string array. Maximum 3 items.
+- Each tag uses "Mid:Leaf" format (e.g., "Food_Drink:Chew", "Door_Window:Close").
+- Match the category_path Mid/Leaf, and optionally include related Foley tags.
+- The description should make clear why the chosen category/tags are appropriate.
 
-[confidence 규칙]
-- confidence는 0.0 ~ 1.0 사이의 실수다.
-- confidence는 이벤트를 제외할지 말지를 결정하는 기준이 아니라, 추출된 이벤트의 확신 정도를 표시하는 값이다.
-- 시각적 근거와 행위 맥락이 명확할수록 높다.
-- 실제 소리가 불분명하거나 추론 비중이 크면 낮춘다.
-- 신뢰도가 낮더라도 Foley 가능성이 있으면 이벤트를 생략하지 말고 포함하라.
-- 대략적인 기준:
-  - 0.85~1.00: 시각적으로도 명확하고 행위상 소리가 거의 확실함
-  - 0.60~0.84: 합리적으로 추정 가능함
-  - 0.35~0.59: 근거는 있으나 불확실성이 큼
-  - 0.10~0.34: 매우 약한 후보지만 Foley 가능성은 있음
+[confidence Rules]
+- confidence is a float between 0.0 and 1.0.
+- It indicates certainty level, NOT whether to include or exclude the event.
+- Higher when visual evidence and action context are clear.
+- Lower when the actual sound is ambiguous or heavily inferred.
+- Include the event even if confidence is low, as long as Foley potential exists.
+- Approximate scale:
+  - 0.85–1.00: Visually clear and the action almost certainly produces sound
+  - 0.60–0.84: Reasonably inferable
+  - 0.35–0.59: Evidence exists but significant uncertainty
+  - 0.10–0.34: Very weak candidate but Foley possibility exists
 
-[설명 작성 규칙]
-- description은 짧고 구체적으로 작성한다.
-- "무엇이", "어떤 동작으로", "어느 순간 소리가 나는지"가 드러나야 한다.
-- 불필요한 감상 표현은 넣지 마라.
+[Description Rules]
+- Write descriptions in English, short and specific.
+- Must convey WHAT object, WHAT action, and WHEN the sound occurs.
+- Do not include unnecessary subjective commentary.
+- Bad:  "Chewing sound"
+- Good: "Biting into a raw carrot with a short, crisp crunch at the moment of contact."
 
-[출력 규칙]
-- 반드시 JSON만 출력한다.
-- scene 바깥의 정보는 추정하지 마라.
-- 과소검출(false negative)을 피하라.
-- scene 안에서 Foley 가능성이 보이는 행위는 가능한 한 빠짐없이 추출하라.
-- 빈 배열은 scene 안에 의미 있는 Foley 가능성이 전혀 없을 때만 반환하라.
+[Language]
+- All output text (description) MUST be in English.
 
-[출력 형식]
+[Output Rules]
+- Output ONLY valid JSON. No markdown code blocks.
+- Do not infer information outside the scene.
+- Avoid false negatives.
+- Extract all actions with Foley potential as completely as possible.
+- Return an empty array ONLY when there is absolutely no Foley potential in the scene.
+
+[Output Format]
 {
   "scene_id": 1,
   "events": [
@@ -121,7 +125,7 @@ scene 내부에서 발생했을 가능성이 있는 Foley 이벤트를 이벤트
       "peak_time":  2.45,
       "category_path": ["Foley", "Food_Drink", "Chew"],
       "tags": ["Food_Drink:Chew"],
-      "description": "생당근을 한입 베어 무는 순간 짧고 단단한 씹는 소리가 발생하는 이벤트.",
+      "description": "Biting into a raw carrot with a short, crisp crunch at the moment of contact.",
       "confidence": 0.93
     }
   ]
@@ -188,9 +192,9 @@ def analyze_scene(
     try:
         scene_meta_str = json.dumps(scene, ensure_ascii=False, indent=2)
         context = (
-            f"[Scene 메타데이터]\n{scene_meta_str}\n\n"
-            f"[영상 정보]\n"
-            f"scene 길이: {duration:.1f}초\n\n"
+            f"[Scene Metadata]\n{scene_meta_str}\n\n"
+            f"[Video Info]\n"
+            f"Scene duration: {duration:.1f}s\n\n"
         )
         prompt = llm_client.get_prompt("foley_analyzer", fallback=PROMPT)
         contents = [context + prompt.text, video_file]
