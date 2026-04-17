@@ -348,6 +348,15 @@ def _summarize_contents(contents) -> dict[str, Any]:
     }
 
 
+def _is_retryable(exc: Exception) -> bool:
+    """500/503 등 서버 오류인지 판별."""
+    msg = str(exc)
+    for code in ("500", "503", "INTERNAL", "UNAVAILABLE"):
+        if code in msg:
+            return True
+    return False
+
+
 def generate_content(
     client,
     *,
@@ -356,11 +365,13 @@ def generate_content(
     stage: str,
     scene_id: int | None = None,
     prompt: PromptHandle | None = None,
+    max_retries: int = 2,
     **kwargs,
 ):
     """`client.models.generate_content` 대체 래퍼.
 
     prompt: Langfuse 프롬프트 핸들. 전달 시 generation ↔ prompt 버전이 링크된다.
+    서버 오류(500/503) 발생 시 최대 *max_retries*회 재시도한다.
     """
     lf = _get_langfuse()
     summary = _summarize_contents(contents)
@@ -397,16 +408,28 @@ def generate_content(
     else:
         gen = None
 
+    total_attempts = max_retries + 1
     t0 = time.perf_counter()
-    try:
-        response = client.models.generate_content(model=model, contents=contents, **kwargs)
-    except Exception as e:
-        if gen_ctx is not None:
-            try:
-                gen.update(level="ERROR", status_message=str(e))
-            finally:
-                gen_ctx.__exit__(type(e), e, e.__traceback__)
-        raise
+    last_exc: Exception | None = None
+
+    for attempt in range(1, total_attempts + 1):
+        try:
+            response = client.models.generate_content(model=model, contents=contents, **kwargs)
+            last_exc = None
+            break
+        except Exception as e:
+            last_exc = e
+            if attempt < total_attempts and _is_retryable(e):
+                wait = 2 ** attempt  # 2s, 4s
+                print(f"[llm] 서버 오류, {wait}s 후 재시도 (attempt {attempt}/{total_attempts}): {e}")
+                time.sleep(wait)
+                continue
+            if gen_ctx is not None:
+                try:
+                    gen.update(level="ERROR", status_message=str(e))
+                finally:
+                    gen_ctx.__exit__(type(e), e, e.__traceback__)
+            raise
     latency = time.perf_counter() - t0
 
     um = getattr(response, "usage_metadata", None)

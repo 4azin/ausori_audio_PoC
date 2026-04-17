@@ -166,7 +166,11 @@ def trim_video(video_path: str, start_sec: float, end_sec: float, out_path: str)
         "-c:a", "aac", "-b:a", "128k",
         out_path,
     ]
-    subprocess.run(cmd, capture_output=True, check=True)
+    proc = subprocess.run(cmd, capture_output=True)
+    if proc.returncode != 0:
+        stderr = proc.stderr.decode("utf-8", errors="replace")
+        print(f"[ffmpeg] stderr: {stderr[-500:]}")
+        proc.check_returncode()
 
 
 # ---------------------------------------------------------------------------
@@ -191,6 +195,10 @@ def analyze_scene(
         metadata={"scene_id": scene_id, "start": start, "end": end, "duration": duration},
     ):
         trim_video(video_path, start, end, trimmed_path)
+
+    trim_size = os.path.getsize(trimmed_path)
+    if trim_size < 1024:
+        print(f"[warn] scene {scene_id}: trimmed 파일이 비정상적으로 작음 ({trim_size}B). ffmpeg 출력 확인 필요.")
 
     video_file = video_upload.upload_video(client, trimmed_path)
 

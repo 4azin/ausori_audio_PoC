@@ -29,13 +29,21 @@ def reset_upload_total_sec() -> None:
     _upload_total_sec = 0.0
 
 
-def upload_video(client: genai.Client, video_path: str, *, poll_interval: float = 2.0) -> object:
+def upload_video(
+    client: genai.Client,
+    video_path: str,
+    *,
+    poll_interval: float = 2.0,
+    max_retries: int = 2,
+) -> object:
     """영상을 Gemini File API로 업로드하고 처리 완료까지 대기.
+
+    FAILED 상태가 반환되면 파일을 삭제하고 최대 *max_retries*회 재시도한다.
 
     Returns:
         처리 완료된 file 객체 (contents 에 직접 전달 가능)
     Raises:
-        RuntimeError: 파일 처리가 FAILED 상태로 끝난 경우
+        RuntimeError: 모든 재시도 후에도 파일 처리가 FAILED 상태인 경우
     """
     global _upload_total_sec
     file_size = os.path.getsize(video_path)
@@ -64,24 +72,54 @@ def upload_video(client: genai.Client, video_path: str, *, poll_interval: float 
         else:
             upload_path = video_path
 
+        last_error: str | None = None
+        total_attempts = max_retries + 1
+
         try:
-            video_file = client.files.upload(file=upload_path)
+            for attempt in range(1, total_attempts + 1):
+                try:
+                    video_file = client.files.upload(file=upload_path)
+                except Exception as exc:
+                    if attempt < total_attempts:
+                        print(f"[upload] 업로드 실패 (attempt {attempt}/{total_attempts}): {exc}")
+                        time.sleep(poll_interval)
+                        continue
+                    raise
+
+                upload_sec = time.perf_counter() - t0
+                print(f"[upload] 업로드 완료: {video_file.name} (state={video_file.state}, {upload_sec:.1f}s)")
+
+                while video_file.state == "PROCESSING":
+                    time.sleep(poll_interval)
+                    video_file = client.files.get(name=video_file.name)
+
+                if video_file.state != "FAILED":
+                    break
+
+                # FAILED — 삭제 후 재시도
+                last_error = video_file.name
+                print(f"[upload] 파일 처리 실패: {video_file.name} (attempt {attempt}/{total_attempts})")
+                try:
+                    client.files.delete(name=video_file.name)
+                except Exception:
+                    pass
+
+                if attempt < total_attempts:
+                    time.sleep(poll_interval)
         finally:
             if needs_copy:
-                os.unlink(upload_path)
-
-        upload_sec = time.perf_counter() - t0
-        print(f"[upload] 업로드 완료: {video_file.name} (state={video_file.state}, {upload_sec:.1f}s)")
-
-        while video_file.state == "PROCESSING":
-            time.sleep(poll_interval)
-            video_file = client.files.get(name=video_file.name)
+                try:
+                    os.unlink(upload_path)
+                except OSError:
+                    pass
 
         total_sec = time.perf_counter() - t0
         _upload_total_sec += total_sec
 
         if video_file.state == "FAILED":
-            raise RuntimeError(f"Gemini 파일 처리 실패: {video_file.name}")
+            raise RuntimeError(
+                f"Gemini 파일 처리 실패 ({max_retries + 1}회 시도): {last_error}"
+            )
 
         print(f"[upload] 처리 완료: {video_file.name} (state={video_file.state}, total={total_sec:.1f}s)")
 
