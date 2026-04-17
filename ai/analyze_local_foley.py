@@ -152,13 +152,18 @@ Each event MUST include these fields:
 # ---------------------------------------------------------------------------
 
 def trim_video(video_path: str, start_sec: float, end_sec: float, out_path: str) -> None:
-    """ffmpeg으로 start~end 구간을 잘라 out_path에 저장."""
+    """ffmpeg으로 start~end 구간을 잘라 out_path에 저장.
+
+    -c copy 대신 재인코딩하여 키프레임 문제를 방지한다.
+    Gemini File API는 키프레임이 없는 영상을 처리하지 못할 수 있다.
+    """
     cmd = [
         "ffmpeg", "-y",
         "-ss", str(start_sec),
         "-to", str(end_sec),
         "-i", video_path,
-        "-c", "copy",
+        "-c:v", "libx264", "-preset", "fast", "-crf", "23",
+        "-c:a", "aac", "-b:a", "128k",
         out_path,
     ]
     subprocess.run(cmd, capture_output=True, check=True)
