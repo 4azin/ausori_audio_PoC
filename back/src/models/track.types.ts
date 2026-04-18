@@ -7,6 +7,7 @@ export interface Track {
   volume: number;
   pan: number;
   isMuted: boolean;
+  isSolo: boolean;
   order: number;
   createdAt: Date;
   updatedAt: Date;

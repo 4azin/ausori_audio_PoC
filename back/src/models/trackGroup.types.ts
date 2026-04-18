@@ -2,7 +2,7 @@
 export interface TrackGroup {
   id: number;
   projectId: number;
-  type: "dialogue" | "music" | "background" | "foley" | "sfx" | "cinematic";
+  type: "ambience" | "cinematic" | "dialogue_vo" | "foley" | "sfx" | "music";
   volume: number;
   isMuted: boolean;
   isSolo: boolean;

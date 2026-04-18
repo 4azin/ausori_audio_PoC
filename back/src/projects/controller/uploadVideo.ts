@@ -12,5 +12,5 @@ export async function uploadVideo(req: Request, res: Response) {
 
   const result = await uploadVideoService(projectId, userId, req.file);
 
-  res.status(200).json(result);
+  res.status(202).json(result);
 }

@@ -1,48 +1,64 @@
+import { query, Runner } from "../config/db";
 import { TrackEvent } from "./trackEvent.types";
 
-// TODO: DB 연결 후 실제 쿼리로 교체 (현재 in-memory stub)
-const trackEvents: TrackEvent[] = [];
-let nextId = 1;
+const COLUMNS = `
+  id, project_id AS "projectId", track_id AS "trackId",
+  sound_asset_id AS "soundAssetId",
+  ai_event_id AS "aiEventId",
+  start_time AS "startTime", end_time AS "endTime", "offset",
+  volume_override AS "volumeOverride",
+  fade_in AS "fadeIn", fade_out AS "fadeOut",
+  is_user_edited AS "isUserEdited",
+  created_at AS "createdAt", updated_at AS "updatedAt"
+`;
 
-/** TrackEvent DB 접근 레이어 */
 export const trackEventModel = {
-
-  /** 프로젝트의 전체 트랙 이벤트 조회 */
   async findAllByProjectId(projectId: number): Promise<TrackEvent[]> {
-    return trackEvents.filter((e) => e.projectId === projectId);
+    const res = await query<TrackEvent>(
+      `SELECT ${COLUMNS} FROM track_events
+       WHERE project_id = $1
+       ORDER BY track_id ASC, start_time ASC, id ASC`,
+      [projectId],
+    );
+    return res.rows;
   },
 
-  /** 프로젝트의 트랙 이벤트 일괄 삭제 */
-  async deleteAllByProjectId(projectId: number): Promise<void> {
-    const ids = trackEvents
-      .filter((e) => e.projectId === projectId)
-      .map((e) => e.id);
-
-    for (const id of ids) {
-      const idx = trackEvents.findIndex((e) => e.id === id);
-      if (idx !== -1) trackEvents.splice(idx, 1);
-    }
+  async deleteAllByProjectId(projectId: number, runner?: Runner): Promise<void> {
+    const sql = `DELETE FROM track_events WHERE project_id = $1`;
+    if (runner) await runner.query(sql, [projectId]);
+    else await query(sql, [projectId]);
   },
 
-  /** 트랙 이벤트 일괄 생성 */
   async createMany(
     projectId: number,
     data: Omit<TrackEvent, "id" | "projectId" | "createdAt" | "updatedAt">[],
+    runner?: Runner,
   ): Promise<TrackEvent[]> {
-    const now = new Date();
+    if (data.length === 0) return [];
 
-    const created = data.map((d) => {
-      const event: TrackEvent = {
-        id: nextId++,
-        projectId,
-        ...d,
-        createdAt: now,
-        updatedAt: now,
-      };
-      trackEvents.push(event);
-      return event;
-    });
+    const values: string[] = [];
+    const params: unknown[] = [];
+    let i = 1;
 
-    return created;
+    for (const e of data) {
+      values.push(
+        `($${i++}, $${i++}, $${i++}, $${i++}, $${i++}, $${i++}, $${i++}, $${i++}, $${i++}, $${i++}, $${i++})`,
+      );
+      params.push(
+        projectId, e.trackId, e.soundAssetId, e.aiEventId ?? null,
+        e.startTime, e.endTime, e.offset,
+        e.volumeOverride, e.fadeIn, e.fadeOut, e.isUserEdited,
+      );
+    }
+
+    const sql = `INSERT INTO track_events
+                   (project_id, track_id, sound_asset_id, ai_event_id,
+                    start_time, end_time, "offset",
+                    volume_override, fade_in, fade_out, is_user_edited)
+                 VALUES ${values.join(", ")}
+                 RETURNING ${COLUMNS}`;
+
+    const res = runner ? await runner.query(sql, params) : await query(sql, params);
+    return res.rows as TrackEvent[];
   },
 };

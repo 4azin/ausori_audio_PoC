@@ -4,6 +4,7 @@ import { validate } from "../middleware/validate";
 import { isAuthenticated } from "../middleware/auth";
 import { upload } from "../middleware/upload";
 import { createProjectDto, updateProjectDto, saveProjectDto } from "./dto";
+import { mockRouter } from "./mocks";
 import {
   getProjects,
   getProjectById,
@@ -13,50 +14,49 @@ import {
   saveProject,
   loadProject,
   uploadVideo,
+  getStatus,
+  listSnapshots,
+  restoreSnapshot,
+  getSimilarSounds,
 } from "./controller";
 
 /** Project 라우터 — URL과 핸들러 매핑만 담당 */
 const router = Router();
 
+/** 프론트 개발용: MOCK_STATUS=true면 특정 경로를 인증 없이 목 라우터로 처리 */
+if (process.env.MOCK_STATUS === "true") {
+  router.use(mockRouter);
+}
+
 /** 프로젝트 API는 로그인 필수 */
 router.use(isAuthenticated);
 
-router.get("/",
-    getProjects
-);
+router.get("/", getProjects);
+router.post("/", validate(createProjectDto), createProject);
 
-router.get("/:id",
-    getProjectById
-);
-
-router.post("/",
-    validate(createProjectDto),
-    createProject
-);
-
-router.patch("/:id",
-    validate(updateProjectDto),
-    updateProject
-);
-
-router.delete("/:id",
-    deleteProject
-);
+router.get("/:id", getProjectById);
+router.patch("/:id", validate(updateProjectDto), updateProject);
+router.delete("/:id", deleteProject);
 
 /** 에디터 상태 저장 / 로드 */
-router.post("/:id/save",
-    validate(saveProjectDto),
-    saveProject
-);
-
-router.get("/:id/load",
-    loadProject
-);
+router.post("/:id/save", validate(saveProjectDto), saveProject);
+router.get("/:id/load", loadProject);
 
 /** 영상 업로드 */
-router.post("/:id/video",
-    upload({ allow: "video", maxSize: 500_000_000 }),
-    uploadVideo
+router.post(
+  "/:id/video",
+  upload({ allow: "video", maxSize: 500_000_000 }),
+  uploadVideo,
 );
+
+/** AI 분석 진행 상태 조회 (폴링용) */
+router.get("/:id/status", getStatus);
+
+/** 유사 에셋 벡터 검색 */
+router.get("/:id/similar-sounds", getSimilarSounds);
+
+/** 스냅샷 히스토리 */
+router.get("/:id/snapshots", listSnapshots);
+router.post("/:id/snapshots/:version/restore", restoreSnapshot);
 
 export default router;
