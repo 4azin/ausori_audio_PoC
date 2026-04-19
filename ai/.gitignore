@@ -24,6 +24,8 @@ pipeline_result.json
 LLM_output/
 RAG_test/LLM_output/
 RAG_test/gemini_LLM_output/
+RAG_test/**/LLM_output/
+RAG_test/**/gemini_LLM_output/
 
 # audio-classify local results and datasets
 audio-classify/gemma_result/
@@ -40,3 +42,13 @@ gemini-audio-classify/runs/
 # Langfuse local compose secrets/state
 langfuse/.env
 langfuse_for_audio/.env
+
+# Vector search PoC local runtime artifacts
+Vector_search_test/.env
+Vector_search_test/.audio_preview/
+Vector_search_test/runs/
+Vector_search_test/__pycache__/
+Vector_search_test/*.log
+Vector_search_test/*.db
+Vector_search_test/*.sqlite
+Vector_search_test/*.sqlite3

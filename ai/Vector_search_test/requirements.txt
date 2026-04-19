@@ -1,0 +1,5 @@
+psycopg[binary]==3.2.9
+python-dotenv==1.0.1
+google-genai==1.13.0
+langfuse==2.60.2
+gradio==5.27.1
