@@ -17,11 +17,14 @@ from google import genai
 from google.genai import types
 from dotenv import load_dotenv
 
+import config
+import llm_client
+
 
 load_dotenv()
 
-GOOGLE_API_KEY = os.getenv("GOOGLE_API_KEY", "")
-GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-3-flash-preview")
+GEMINI_API_VIDEO = config.GEMINI_API_VIDEO
+GEMINI_MODEL = config.GEMINI_MODEL_GLOBAL_MUSIC
 
 PROMPT = """\
 당신은 영상 분석가이자 사운드 디렉터다.
@@ -221,10 +224,10 @@ def extract_frames(video_path: str, fps: float, max_frames: int, out_dir: str) -
 # ---------------------------------------------------------------------------
 
 def analyze(video_path: str, fps: float = 1.0, max_frames: int = 180) -> dict:
-    if not GOOGLE_API_KEY:
-        raise EnvironmentError("GOOGLE_API_KEY가 설정되지 않았습니다. .env 파일을 확인하세요.")
+    if not GEMINI_API_VIDEO:
+        raise EnvironmentError("GEMINI_API_VIDEO가 설정되지 않았습니다. .env 파일을 확인하세요.")
 
-    client = genai.Client(api_key=GOOGLE_API_KEY)
+    client = genai.Client(api_key=GEMINI_API_VIDEO)
 
     duration = get_duration(video_path)
     print(f"[info] 영상 길이: {duration:.1f}초")
@@ -242,10 +245,13 @@ def analyze(video_path: str, fps: float = 1.0, max_frames: int = 180) -> dict:
             frame_parts.append(types.Part.from_bytes(data=data, mime_type="image/jpeg"))
 
     context = f"[영상 정보]\n총 길이: {duration:.1f}초\n프레임 수: {len(frame_parts)}장 (약 {fps}fps 샘플)\n\n"
-    contents = [context + PROMPT] + frame_parts
+    prompt = llm_client.get_prompt("global_music_analyzer", fallback=PROMPT)
+    contents = [context + prompt.text] + frame_parts
 
-    print(f"[info] Gemini 호출 중... (model={GEMINI_MODEL})")
-    response = client.models.generate_content(model=GEMINI_MODEL, contents=contents)
+    print(f"[info] Gemini 호출 중... (model={GEMINI_MODEL}, prompt={prompt.name}@{prompt.version}/{prompt.source})")
+    response = llm_client.generate_content(
+        client, model=GEMINI_MODEL, contents=contents, stage="global_music", prompt=prompt,
+    )
 
     raw = response.text.strip()
 
