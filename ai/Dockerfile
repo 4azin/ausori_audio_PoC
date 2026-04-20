@@ -7,4 +7,6 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 COPY . .
 
+ENV PYTHONPATH="/app:/app/video-analysis"
+
 CMD ["python", "worker.py"]

@@ -39,14 +39,16 @@ except Exception:
 
 
 # ---------------------------------------------------------------------------
-# 가격표 (USD / 1M tokens). 필요 시 조정.
+# 가격표 (USD / 1M tokens). 2026-04-20 공식 가격 기준.
+# audio_input: 영상에 포함된 오디오 토큰은 별도 단가 적용.
 # ---------------------------------------------------------------------------
 PRICING: dict[str, dict[str, float]] = {
-    "gemini-3-flash-preview":  {"input": 0.30, "output": 2.50, "cached": 0.075},
-    "gemini-3.1-pro-preview":  {"input": 2.00, "output": 12.00, "cached": 0.50},
-    "gemini-2.5-flash":        {"input": 0.30, "output": 2.50, "cached": 0.075},
-    "gemini-2.5-pro":          {"input": 1.25, "output": 10.00, "cached": 0.31},
-    "gemini-3.1-flash-lite-preview" : {"input": 0.25, "output": 1.5, "cached": 0.025},
+    "gemini-3-flash-preview":        {"input": 0.50, "output": 3.00, "cached": 0.05,  "audio_input": 1.00},
+    "gemini-3.1-pro-preview":        {"input": 2.00, "output": 12.00, "cached": 0.20, "audio_input": 2.00},
+    "gemini-2.5-flash":              {"input": 0.30, "output": 2.50, "cached": 0.03,  "audio_input": 1.00},
+    "gemini-2.5-pro":                {"input": 1.25, "output": 10.00, "cached": 0.125, "audio_input": 1.25},
+    "gemini-2.5-flash-lite":         {"input": 0.10, "output": 0.40, "cached": 0.01,  "audio_input": 0.30},
+    "gemini-3.1-flash-lite-preview": {"input": 0.25, "output": 1.50, "cached": 0.025, "audio_input": 0.50},
 }
 
 
@@ -56,7 +58,7 @@ def _price_for(model: str) -> dict[str, float]:
     for key, val in PRICING.items():
         if model.startswith(key) or key.startswith(model):
             return val
-    return {"input": 0.0, "output": 0.0, "cached": 0.0}
+    return {"input": 0.0, "output": 0.0, "cached": 0.0, "audio_input": 0.0}
 
 
 # ---------------------------------------------------------------------------
@@ -313,14 +315,23 @@ def _emit(record: CallRecord) -> None:
 # ---------------------------------------------------------------------------
 
 def _summarize_contents(contents) -> dict[str, Any]:
-    """Gemini contents 에서 프롬프트 텍스트 + 첨부 요약을 뽑는다 (프레임 바이너리 제외)."""
+    """Gemini contents 에서 프롬프트 텍스트 + 첨부 요약을 뽑는다 (바이너리 제외)."""
     text_parts: list[str] = []
     image_count = 0
+    video_count = 0
     other_count = 0
     try:
         for item in contents:
             if isinstance(item, str):
                 text_parts.append(item)
+                continue
+            # File API 업로드 객체 (name 속성으로 판별)
+            if hasattr(item, "name") and hasattr(item, "state"):
+                mime = getattr(item, "mime_type", "") or ""
+                if str(mime).startswith("video/"):
+                    video_count += 1
+                else:
+                    other_count += 1
                 continue
             mime = getattr(getattr(item, "inline_data", None), "mime_type", None)
             if mime is None:
@@ -334,8 +345,18 @@ def _summarize_contents(contents) -> dict[str, Any]:
     return {
         "prompt_text": "\n".join(text_parts) if text_parts else None,
         "image_count": image_count,
+        "video_count": video_count,
         "other_attachment_count": other_count,
     }
+
+
+def _is_retryable(exc: Exception) -> bool:
+    """500/503 등 서버 오류인지 판별."""
+    msg = str(exc)
+    for code in ("500", "503", "INTERNAL", "UNAVAILABLE"):
+        if code in msg:
+            return True
+    return False
 
 
 def generate_content(
@@ -346,17 +367,20 @@ def generate_content(
     stage: str,
     scene_id: int | None = None,
     prompt: PromptHandle | None = None,
+    max_retries: int = 2,
     **kwargs,
 ):
     """`client.models.generate_content` 대체 래퍼.
 
     prompt: Langfuse 프롬프트 핸들. 전달 시 generation ↔ prompt 버전이 링크된다.
+    서버 오류(500/503) 발생 시 최대 *max_retries*회 재시도한다.
     """
     lf = _get_langfuse()
     summary = _summarize_contents(contents)
     gen_input = {
         "prompt": summary["prompt_text"],
         "image_count": summary["image_count"],
+        "video_count": summary["video_count"],
     }
     gen_metadata = {
         "stage": stage,
@@ -386,16 +410,28 @@ def generate_content(
     else:
         gen = None
 
+    total_attempts = max_retries + 1
     t0 = time.perf_counter()
-    try:
-        response = client.models.generate_content(model=model, contents=contents, **kwargs)
-    except Exception as e:
-        if gen_ctx is not None:
-            try:
-                gen.update(level="ERROR", status_message=str(e))
-            finally:
-                gen_ctx.__exit__(type(e), e, e.__traceback__)
-        raise
+    last_exc: Exception | None = None
+
+    for attempt in range(1, total_attempts + 1):
+        try:
+            response = client.models.generate_content(model=model, contents=contents, **kwargs)
+            last_exc = None
+            break
+        except Exception as e:
+            last_exc = e
+            if attempt < total_attempts and _is_retryable(e):
+                wait = 2 ** attempt  # 2s, 4s
+                print(f"[llm] 서버 오류, {wait}s 후 재시도 (attempt {attempt}/{total_attempts}): {e}")
+                time.sleep(wait)
+                continue
+            if gen_ctx is not None:
+                try:
+                    gen.update(level="ERROR", status_message=str(e))
+                finally:
+                    gen_ctx.__exit__(type(e), e, e.__traceback__)
+            raise
     latency = time.perf_counter() - t0
 
     um = getattr(response, "usage_metadata", None)

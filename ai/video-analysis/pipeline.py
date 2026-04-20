@@ -17,9 +17,14 @@ from __future__ import annotations
 
 import json
 import os
+import sys
 import tempfile
+import time
 from datetime import datetime, timezone
 from typing import Any
+
+# redis_client는 상위 디렉토리(ai/)에 위치
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
 try:
     import redis_client as rc
@@ -28,11 +33,15 @@ except Exception:
     rc = None  # type: ignore[assignment]
     _redis_available = False
 
+from google import genai
+
 import analyze_global
 import analyze_local_foley
 import analyze_local_non_foley
+import config
 import llm_client
 import taxonomy
+import video_upload
 
 
 FOLEY_MAJOR = "Foley"
@@ -59,6 +68,116 @@ def _progress(
             pass
 
 
+def _analyze_scenes(
+    video_path: str,
+    scenes: list[dict],
+    job_id: str,
+    project_id: int | None,
+) -> tuple[dict, dict, float, float]:
+    """Scene별 foley + non_foley 통합 분석. 영상 업로드를 공유한다.
+
+    Returns:
+        (foley_result, non_foley_result, foley_sec, non_foley_sec)
+    """
+    if not config.GEMINI_API_VIDEO:
+        raise EnvironmentError("GEMINI_API_VIDEO가 설정되지 않았습니다. .env 파일을 확인하세요.")
+
+    client = genai.Client(api_key=config.GEMINI_API_VIDEO)
+    total_scenes = len(scenes)
+    print(f"[info] 총 {total_scenes}개 scene 통합 분석 시작")
+
+    foley_results: list[dict] = []
+    non_foley_results: list[dict] = []
+    foley_sec = 0.0
+    non_foley_sec = 0.0
+
+    with tempfile.TemporaryDirectory(ignore_cleanup_errors=True) as tmp:
+        for scene in scenes:
+            scene_id = scene["scene_id"]
+            start = scene["start_time"]
+            end = scene["end_time"]
+            duration = end - start
+
+            print(f"[scene {scene_id}/{total_scenes}] {start}s ~ {end}s 분석 중...")
+
+            # progress: 40% ~ 90% 를 scene 수로 균등 분배
+            scene_progress = 40 + int((scene_id / total_scenes) * 50)
+
+            # 1. Trim once
+            trimmed_path = os.path.join(tmp, f"scene_{scene_id:03d}.mp4")
+            with llm_client.start_span(
+                "ffmpeg_trim",
+                metadata={"scene_id": scene_id, "start": start, "end": end, "duration": duration},
+            ):
+                analyze_local_foley.trim_video(video_path, start, end, trimmed_path)
+
+            trim_size = os.path.getsize(trimmed_path)
+            if trim_size < 1024:
+                print(f"[warn] scene {scene_id}: trimmed 파일이 비정상적으로 작음 ({trim_size}B)")
+
+            # 2. Upload once
+            video_file = video_upload.upload_video(client, trimmed_path)
+
+            try:
+                # 3. Foley
+                _progress(job_id, project_id,
+                          status="analyzing", progress=scene_progress,
+                          current_stage="analyzing_hard")
+                t0 = time.perf_counter()
+                try:
+                    with llm_client.start_span("foley_analyzing", metadata={"scene_id": scene_id}):
+                        foley = analyze_local_foley.analyze_scene(
+                            client, video_path, scene, tmp, video_file=video_file,
+                        )
+                    scene_start = float(start)
+                    for event in foley.get("events", []):
+                        for k in ("start_time", "peak_time", "end_time"):
+                            v = event.get(k)
+                            if isinstance(v, (int, float)):
+                                event[k] = float(v) + scene_start
+                    foley_results.append(foley)
+                    print(f"[scene {scene_id}] foley 이벤트 {len(foley.get('events', []))}개")
+                except Exception as e:
+                    print(f"[scene {scene_id}] foley 실패: {e}")
+                    foley_results.append({"scene_id": scene_id, "events": [], "error": str(e)})
+                foley_sec += time.perf_counter() - t0
+
+                # 4. Non-foley
+                _progress(job_id, project_id,
+                          status="analyzing", progress=scene_progress,
+                          current_stage="analyzing_soft")
+                t0 = time.perf_counter()
+                try:
+                    with llm_client.start_span("non_foley_analyzing", metadata={"scene_id": scene_id}):
+                        non_foley = analyze_local_non_foley.analyze_scene(
+                            client, video_path, scene, tmp, video_file=video_file,
+                        )
+                    scene_start = float(start)
+                    for track in non_foley.get("tracks", []):
+                        track["start_time"] += scene_start
+                        track["end_time"] += scene_start
+                    non_foley_results.append(non_foley)
+                    print(f"[scene {scene_id}] non-foley 트랙 {len(non_foley.get('tracks', []))}개")
+                except Exception as e:
+                    print(f"[scene {scene_id}] non-foley 실패: {e}")
+                    non_foley_results.append({"scene_id": scene_id, "tracks": [], "error": str(e)})
+                non_foley_sec += time.perf_counter() - t0
+            finally:
+                # 5. Delete once
+                video_upload.delete_video(client, video_file)
+
+    _progress(job_id, project_id,
+              status="analyzing", progress=90,
+              current_stage="analyzing_soft")
+
+    return (
+        {"scenes": foley_results},
+        {"scenes": non_foley_results},
+        foley_sec,
+        non_foley_sec,
+    )
+
+
 def run(job, video_path: str | None = None):
     """영상 분석 파이프라인 실행.
 
@@ -79,6 +198,9 @@ def run(job, video_path: str | None = None):
         "video_name": os.path.basename(local_video),
     }
 
+    video_upload.reset_upload_total_sec()
+    pipeline_t0 = time.perf_counter()
+
     with llm_client.start_trace(
         job_id=job_id,
         name="ai-pipeline",
@@ -89,38 +211,26 @@ def run(job, video_path: str | None = None):
         _progress(job_id, project_id,
                   status="scene_splitting", progress=10,
                   current_stage="global_scene_split")
+        global_t0 = time.perf_counter()
         with llm_client.start_span("global_analyzing"):
             global_result = analyze_global.analyze(local_video)
+        global_sec = time.perf_counter() - global_t0
         _progress(job_id, project_id,
                   status="scene_splitting", progress=35,
                   current_stage="global_scene_split")
 
-        with tempfile.NamedTemporaryFile(
-            mode="w", suffix=".json", delete=False, encoding="utf-8"
-        ) as f:
-            json.dump(global_result, f, ensure_ascii=False)
-            global_json_path = f.name
+        foley_result, non_foley_result, foley_sec, non_foley_sec = _analyze_scenes(
+            local_video, global_result["scenes"], job_id, project_id,
+        )
 
-        try:
-            _progress(job_id, project_id,
-                      status="analyzing", progress=40,
-                      current_stage="analyzing_hard")
-            with llm_client.start_span("foley_analyzing"):
-                foley_result = analyze_local_foley.analyze_all(local_video, global_json_path)
-            _progress(job_id, project_id,
-                      status="analyzing", progress=65,
-                      current_stage="analyzing_hard")
-
-            _progress(job_id, project_id,
-                      status="analyzing", progress=70,
-                      current_stage="analyzing_soft")
-            with llm_client.start_span("non_foley_analyzing"):
-                non_foley_result = analyze_local_non_foley.analyze_all(local_video, global_json_path)
-            _progress(job_id, project_id,
-                      status="analyzing", progress=90,
-                      current_stage="analyzing_soft")
-        finally:
-            os.unlink(global_json_path)
+        total_sec = time.perf_counter() - pipeline_t0
+        timing = {
+            "global_sec": round(global_sec, 2),
+            "foley_sec": round(foley_sec, 2),
+            "non_foley_sec": round(non_foley_sec, 2),
+            "upload_total_sec": round(video_upload.get_upload_total_sec(), 2),
+            "total_sec": round(total_sec, 2),
+        }
 
         events = _to_ai_events(foley_result, non_foley_result)
         metrics = _compute_metrics(global_result, events)
@@ -130,15 +240,16 @@ def run(job, video_path: str | None = None):
         done = _build_done_message(
             job_id=job_id, project_id=project_id,
             global_result=global_result, events=events,
-            llm_usage=usage, metrics=metrics,
+            llm_usage=usage, metrics=metrics, timing=timing,
         )
 
         trace.update(
-            output={"metrics": metrics, "llm_usage": usage["overall"]},
+            output={"metrics": metrics, "llm_usage": usage["overall"], "timing": timing},
             metadata={
                 **trace_metadata,
                 "metrics": metrics,
                 "llm_usage_by_stage": usage["by_stage"],
+                "timing": timing,
             },
         )
 
@@ -306,11 +417,14 @@ def _build_done_message(
     events: list[dict],
     llm_usage: dict,
     metrics: dict,
+    timing: dict,
 ):
     telemetry = {
         "sceneCount": metrics["scene_count"],
         "llmUsage": llm_usage["overall"],
         "metrics": metrics,
+        "timing": timing,
+        "inputMethod": "file_api",
     }
     payload = {
         "job_id": job_id,
