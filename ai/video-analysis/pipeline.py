@@ -17,10 +17,14 @@ from __future__ import annotations
 
 import json
 import os
+import sys
 import tempfile
 import time
 from datetime import datetime, timezone
 from typing import Any
+
+# redis_client는 상위 디렉토리(ai/)에 위치
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
 try:
     import redis_client as rc

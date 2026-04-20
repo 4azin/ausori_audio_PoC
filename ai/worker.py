@@ -7,13 +7,18 @@
 - 키 삭제는 백엔드 책임 (AI 는 cleanup 안 함)
 """
 
+import os
+import sys
 import traceback
+import time
+
+# video-analysis/ 내 모듈 import를 위해 경로 추가
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), "video-analysis"))
 
 import redis_client as rc
 import s3_client as s3
 import pipeline
 from config import POLL_INTERVAL
-import time
 
 
 def _process(req: rc.JobRequest) -> None:
