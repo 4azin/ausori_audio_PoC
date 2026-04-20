@@ -5,7 +5,10 @@ import csv
 import json
 import random
 import re
+import shutil
+import tempfile
 import time
+import unicodedata
 from pathlib import Path
 from typing import Any
 
@@ -47,6 +50,30 @@ def get_group_root(group: str) -> Path:
     if group_name == "dialogue_vo":
         return DIALOGUE_VO_ROOT
     raise ValueError(f"Unsupported group: {group}")
+
+
+def ascii_safe_display_name(value: str, fallback: str) -> str:
+    normalized = unicodedata.normalize("NFKD", value)
+    ascii_value = normalized.encode("ascii", "ignore").decode("ascii")
+    ascii_value = re.sub(r"[^A-Za-z0-9._-]+", "_", ascii_value).strip("._-")
+    return ascii_value[:120] or fallback
+
+
+def path_needs_ascii_upload_alias(path: Path) -> bool:
+    try:
+        str(path).encode("ascii")
+        return False
+    except UnicodeEncodeError:
+        return True
+
+
+def copy_to_ascii_upload_alias(path: Path, request_key: str) -> Path:
+    suffix = path.suffix if path.suffix else ".wav"
+    alias_dir = Path(tempfile.gettempdir()) / "gemini_audio_upload_aliases"
+    alias_dir.mkdir(parents=True, exist_ok=True)
+    alias_path = alias_dir / f"{request_key}{suffix}"
+    shutil.copy2(path, alias_path)
+    return alias_path
 
 
 def get_run_dir(run_name: str) -> Path:
@@ -313,6 +340,7 @@ def cmd_upload(args: argparse.Namespace) -> None:
                 print(f"Skipping upload for {item['request_key']} (already uploaded)")
                 continue
             path = Path(item["absolute_path"])
+            upload_path = copy_to_ascii_upload_alias(path, item["request_key"]) if path_needs_ascii_upload_alias(path) else path
             with start_generation(
                 run_dir=run_dir,
                 run_name=args.run_name,
@@ -321,7 +349,18 @@ def cmd_upload(args: argparse.Namespace) -> None:
                 input_payload={"filename": item["filename"], "request_key": item["request_key"]},
                 metadata={"absolute_path": item["absolute_path"], "mime_type": item["mime_type"]},
             ) as generation:
-                uploaded = client.files.upload(file=str(path))
+                from google.genai import types
+
+                uploaded = client.files.upload(
+                    file=str(upload_path),
+                    config=types.UploadFileConfig(
+                        display_name=ascii_safe_display_name(
+                            item["filename"],
+                            fallback=item["request_key"],
+                        ),
+                        mime_type=item["mime_type"],
+                    ),
+                )
                 upload_payload = {
                     "request_key": item["request_key"],
                     "filename": item["filename"],
