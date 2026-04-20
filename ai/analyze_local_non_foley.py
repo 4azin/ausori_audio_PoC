@@ -235,25 +235,30 @@ def analyze_scene(
     video_path: str,
     scene: dict,
     tmp_dir: str,
+    *,
+    video_file=None,
 ) -> dict:
-    """scene 하나를 잘라 Gemini File API로 업로드 후 Non-Foley 트랙 배치 분석."""
+    """scene 하나를 분석. video_file이 주어지면 trim/upload/delete를 건너뛴다."""
     scene_id = scene["scene_id"]
     start = scene["start_time"]
     end = scene["end_time"]
     duration = end - start
 
-    trimmed_path = os.path.join(tmp_dir, f"scene_{scene_id:03d}.mp4")
-    with llm_client.start_span(
-        "ffmpeg_trim",
-        metadata={"scene_id": scene_id, "start": start, "end": end, "duration": duration},
-    ):
-        trim_video(video_path, start, end, trimmed_path)
+    owns_file = video_file is None
 
-    trim_size = os.path.getsize(trimmed_path)
-    if trim_size < 1024:
-        print(f"[warn] scene {scene_id}: trimmed 파일이 비정상적으로 작음 ({trim_size}B). ffmpeg 출력 확인 필요.")
+    if owns_file:
+        trimmed_path = os.path.join(tmp_dir, f"scene_{scene_id:03d}.mp4")
+        with llm_client.start_span(
+            "ffmpeg_trim",
+            metadata={"scene_id": scene_id, "start": start, "end": end, "duration": duration},
+        ):
+            trim_video(video_path, start, end, trimmed_path)
 
-    video_file = video_upload.upload_video(client, trimmed_path)
+        trim_size = os.path.getsize(trimmed_path)
+        if trim_size < 1024:
+            print(f"[warn] scene {scene_id}: trimmed 파일이 비정상적으로 작음 ({trim_size}B). ffmpeg 출력 확인 필요.")
+
+        video_file = video_upload.upload_video(client, trimmed_path)
 
     try:
         scene_meta_str = json.dumps(scene, ensure_ascii=False, indent=2)
@@ -270,7 +275,8 @@ def analyze_scene(
             stage="non_foley", scene_id=scene_id, prompt=prompt,
         )
     finally:
-        video_upload.delete_video(client, video_file)
+        if owns_file:
+            video_upload.delete_video(client, video_file)
 
     raw = response.text.strip()
 
