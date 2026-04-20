@@ -1,36 +1,22 @@
 # Vector Search Test
 
-## Fixed Decisions
+This folder now owns only the video-event search side of the PoC.
 
-- Work only inside this folder.
-- Use PostgreSQL + pgvector.
-- Store Foley and Hard_SFX file paths from the local sound library.
-- Store LLM outputs from `gemini-audio-classify/result`.
-- Embed only:
-  - `short_caption_en`
-  - `long_caption_en`
-  - `combined_caption`
-- Do not embed `tags_structured` in the first version.
-- Use external video event `description` as the main query text.
-- Use `track` as the first hard filter.
-- Use `categoryPath` and `tags` as reranking signals.
-- Keep `videoContext` stored, but do not make it the default query for Foley/SFX retrieval.
-- Run local PostgreSQL with pgvector through `docker compose` on port `5433`.
+Moved out to `ai/custom_library`:
 
-## Tables
+- S3 audio object listing
+- `gemini-audio-classify` result JSON loading
+- audio caption/tag storage
+- audio caption embedding generation
 
-- `audio_assets`
-  - Real audio file identity and file path.
-- `audio_descriptions`
-  - LLM caption output for each audio asset.
-- `audio_embeddings`
-  - Caption embeddings for retrieval experiments.
-- `video_query_events`
-  - External LLM event rows from the video analysis JSON.
-- `video_query_embeddings`
-  - Query embeddings for each event.
-- `retrieval_results`
-  - Ranked retrieval outputs for evaluation.
+Kept here:
+
+- external video-analysis JSON loading
+- track event extraction
+- event description query embedding
+- vector similarity search against existing audio embeddings
+- category/tags/class reranking
+- retrieval result storage
 
 ## Retrieval Strategy
 
@@ -43,19 +29,6 @@
    - event `tags`
    - audio `primary_class` / `second_class`
    - stored `tags_structured`
-
-## Next Files To Add
-
-- `init_db.py`
-  - Create schema from `schema.sql`.
-- `load_audio_assets.py`
-  - Parse audio JSON files and register local audio paths.
-- `embed_audio_texts.py`
-  - Create caption embeddings and store them.
-- `load_video_events.py`
-  - Parse the external video analysis JSON.
-- `search_events.py`
-  - Run vector search and save ranked results.
 
 ## Local DB Setup
 
@@ -80,15 +53,21 @@ python init_db.py
 6. Load and index data:
 
 ```powershell
-python load_audio_assets.py
-python embed_audio_texts.py
 python load_video_events.py
 python search_events.py
 ```
 
+Before running `search_events.py`, audio tables must already contain indexed audio descriptions and embeddings. For the current PoC, generate them from:
+
+```powershell
+cd ..\custom_library
+python load_audio_assets.py
+python embed_audio_texts.py
+```
+
 ## Langfuse
 
-- Embedding calls are instrumented in `embedding.py`.
+- Query embedding calls are instrumented in `embedding.py`.
 - Langfuse will show:
   - each embedding call
   - input text

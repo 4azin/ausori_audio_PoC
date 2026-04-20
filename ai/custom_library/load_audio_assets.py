@@ -1,11 +1,11 @@
 from __future__ import annotations
 
 import json
-from collections import defaultdict
-from pathlib import Path
+from pathlib import PurePosixPath
 
 from db import get_conn
-from settings import AUDIO_JSON_ROOT, SOUND_LIBRARY_ROOT
+from s3_catalog import S3AudioObject, build_s3_filename_index
+from settings import AUDIO_JSON_ROOT
 from utils import (
     infer_source_group,
     iter_audio_result_files,
@@ -14,52 +14,92 @@ from utils import (
 )
 
 
-def build_filename_index() -> dict[str, list[Path]]:
-    index: dict[str, list[Path]] = defaultdict(list)
-    for root_name in ("Foley", "Hard_SFX"):
-        root = SOUND_LIBRARY_ROOT / root_name
-        if not root.exists():
-            continue
-        for path in root.rglob("*"):
-            if path.is_file():
-                index[path.name.lower()].append(path)
-    return {key: sorted(values) for key, values in index.items()}
-
-
-def choose_matching_path(
+def choose_matching_object(
     filename: str,
     source_group: str,
-    filename_index: dict[str, list[Path]],
-) -> Path | None:
+    filename_index: dict[str, list[S3AudioObject]],
+) -> S3AudioObject | None:
     candidates = filename_index.get(filename.lower(), [])
     if not candidates:
         return None
 
-    preferred_root = "Foley" if source_group == "foley" else "Hard_SFX"
-    preferred = [path for path in candidates if preferred_root in path.parts]
+    preferred_markers = {
+        "ambience": ("ambience",),
+        "cinematic": ("cinematic",),
+        "dialogue_vo": ("dialogue_vo", "dialogue"),
+        "foley": ("foley",),
+        "sfx": ("hard_sfx", "sfx"),
+        "music": ("music",),
+    }.get(source_group, ())
+    preferred = [
+        obj
+        for obj in candidates
+        if any(marker in obj.key.lower() for marker in preferred_markers)
+    ]
     return preferred[0] if preferred else candidates[0]
 
 
-def upsert_audio_asset(cur, asset_key: str, source_group: str, local_path: Path) -> int:
-    relative_path = local_path.relative_to(SOUND_LIBRARY_ROOT)
+def upsert_audio_asset(cur, asset_key: str, source_group: str, s3_object: S3AudioObject) -> int:
+    relative_path = PurePosixPath(s3_object.key)
     folder_major, folder_middle, folder_sub = split_relative_parts(relative_path)
+    cur.execute(
+        """
+        SELECT id
+        FROM audio_assets
+        WHERE s3_key = %s
+        """,
+        (s3_object.key,),
+    )
+    existing = cur.fetchone()
+    if existing:
+        cur.execute(
+            """
+            UPDATE audio_assets
+            SET
+                source_group = %s,
+                original_filename = %s,
+                s3_bucket = %s,
+                local_file_path = NULL,
+                relative_file_path = %s,
+                folder_major = %s,
+                folder_middle = %s,
+                folder_sub = %s
+            WHERE id = %s
+            """,
+            (
+                source_group,
+                s3_object.filename,
+                s3_object.bucket,
+                s3_object.key,
+                folder_major,
+                folder_middle,
+                folder_sub,
+                existing[0],
+            ),
+        )
+        return existing[0]
+
     cur.execute(
         """
         INSERT INTO audio_assets (
             asset_key,
             source_group,
             original_filename,
+            s3_bucket,
+            s3_key,
             local_file_path,
             relative_file_path,
             folder_major,
             folder_middle,
             folder_sub
         )
-        VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+        VALUES (%s, %s, %s, %s, %s, NULL, %s, %s, %s, %s)
         ON CONFLICT (asset_key)
         DO UPDATE SET
             source_group = EXCLUDED.source_group,
             original_filename = EXCLUDED.original_filename,
+            s3_bucket = EXCLUDED.s3_bucket,
+            s3_key = EXCLUDED.s3_key,
             local_file_path = EXCLUDED.local_file_path,
             relative_file_path = EXCLUDED.relative_file_path,
             folder_major = EXCLUDED.folder_major,
@@ -70,9 +110,10 @@ def upsert_audio_asset(cur, asset_key: str, source_group: str, local_path: Path)
         (
             asset_key,
             source_group,
-            local_path.name,
-            str(local_path),
-            str(relative_path),
+            s3_object.filename,
+            s3_object.bucket,
+            s3_object.key,
+            s3_object.key,
             folder_major,
             folder_middle,
             folder_sub,
@@ -124,10 +165,11 @@ def upsert_audio_description(cur, audio_asset_id: int, run_name: str, result_row
 
 
 def main() -> None:
-    filename_index = build_filename_index()
+    filename_index = build_s3_filename_index()
+    indexed_s3_files = sum(len(items) for items in filename_index.values())
     result_files = iter_audio_result_files(AUDIO_JSON_ROOT)
     processed_rows = 0
-    missing_files: list[tuple[str, str]] = []
+    missing_s3_objects: list[tuple[str, str]] = []
 
     with get_conn() as conn:
         with conn.cursor() as cur:
@@ -141,28 +183,33 @@ def main() -> None:
                     if not filename or not asset_key:
                         continue
 
-                    guessed_group = "foley" if "foley" in asset_key.lower() else "sfx"
-                    local_path = choose_matching_path(filename, guessed_group, filename_index)
-                    if local_path is None:
-                        missing_files.append((asset_key, filename))
+                    guessed_group = infer_source_group(asset_key)
+                    s3_object = choose_matching_object(filename, guessed_group, filename_index)
+                    if s3_object is None:
+                        missing_s3_objects.append((asset_key, filename))
                         continue
 
-                    source_group = infer_source_group(
-                        asset_key,
-                        local_path.relative_to(SOUND_LIBRARY_ROOT),
-                    )
-                    audio_asset_id = upsert_audio_asset(cur, asset_key, source_group, local_path)
+                    source_group = infer_source_group(asset_key, s3_object.key)
+                    audio_asset_id = upsert_audio_asset(cur, asset_key, source_group, s3_object)
                     upsert_audio_description(cur, audio_asset_id, run_name, row)
                     processed_rows += 1
 
         conn.commit()
 
+    print(f"indexed s3 audio objects: {indexed_s3_files}")
     print(f"processed result files: {len(result_files)}")
     print(f"upserted description rows: {processed_rows}")
-    print(f"missing local files: {len(missing_files)}")
-    for asset_key, filename in missing_files[:20]:
+    print(f"missing s3 objects: {len(missing_s3_objects)}")
+    if indexed_s3_files == 0:
+        print("no S3 objects were indexed. Check AWS_S3_BUCKET, AWS_REGION, and AWS_S3_PREFIXES.")
+    else:
+        print("sample indexed s3 filenames:")
+        for name in sorted(filename_index.keys())[:10]:
+            print(f"  {name}")
+    for asset_key, filename in missing_s3_objects[:20]:
         print(f"missing: {asset_key} -> {filename}")
 
 
 if __name__ == "__main__":
     main()
+

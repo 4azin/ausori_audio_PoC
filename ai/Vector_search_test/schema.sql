@@ -7,14 +7,16 @@ CREATE TABLE IF NOT EXISTS audio_assets (
     asset_key VARCHAR(120) NOT NULL UNIQUE,
     source_group VARCHAR(20) NOT NULL,
     original_filename TEXT NOT NULL,
-    local_file_path TEXT NOT NULL,
+    s3_bucket TEXT,
+    s3_key TEXT,
+    local_file_path TEXT,
     relative_file_path TEXT,
     folder_major TEXT,
     folder_middle TEXT,
     folder_sub TEXT,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     CONSTRAINT ck_audio_assets_source_group
-        CHECK (source_group IN ('foley', 'sfx'))
+        CHECK (source_group IN ('ambience', 'cinematic', 'dialogue_vo', 'foley', 'sfx', 'music'))
 );
 
 CREATE INDEX IF NOT EXISTS idx_audio_assets_source_group
@@ -22,6 +24,26 @@ CREATE INDEX IF NOT EXISTS idx_audio_assets_source_group
 
 CREATE INDEX IF NOT EXISTS idx_audio_assets_original_filename
     ON audio_assets(original_filename);
+
+ALTER TABLE audio_assets
+    ADD COLUMN IF NOT EXISTS s3_bucket TEXT;
+
+ALTER TABLE audio_assets
+    ADD COLUMN IF NOT EXISTS s3_key TEXT;
+
+ALTER TABLE audio_assets
+    ALTER COLUMN local_file_path DROP NOT NULL;
+
+ALTER TABLE audio_assets
+    DROP CONSTRAINT IF EXISTS ck_audio_assets_source_group;
+
+ALTER TABLE audio_assets
+    ADD CONSTRAINT ck_audio_assets_source_group
+        CHECK (source_group IN ('ambience', 'cinematic', 'dialogue_vo', 'foley', 'sfx', 'music'));
+
+CREATE UNIQUE INDEX IF NOT EXISTS uq_audio_assets_s3_key
+    ON audio_assets(s3_key)
+    WHERE s3_key IS NOT NULL;
 
 CREATE TABLE IF NOT EXISTS audio_descriptions (
     id BIGSERIAL PRIMARY KEY,
