@@ -39,14 +39,16 @@ except Exception:
 
 
 # ---------------------------------------------------------------------------
-# 가격표 (USD / 1M tokens). 필요 시 조정.
+# 가격표 (USD / 1M tokens). 2026-04-20 공식 가격 기준.
+# audio_input: 영상에 포함된 오디오 토큰은 별도 단가 적용.
 # ---------------------------------------------------------------------------
 PRICING: dict[str, dict[str, float]] = {
-    "gemini-3-flash-preview":  {"input": 0.30, "output": 2.50, "cached": 0.075},
-    "gemini-3.1-pro-preview":  {"input": 2.00, "output": 12.00, "cached": 0.50},
-    "gemini-2.5-flash":        {"input": 0.30, "output": 2.50, "cached": 0.075},
-    "gemini-2.5-pro":          {"input": 1.25, "output": 10.00, "cached": 0.31},
-    "gemini-3.1-flash-lite-preview" : {"input": 0.25, "output": 1.5, "cached": 0.025},
+    "gemini-3-flash-preview":        {"input": 0.50, "output": 3.00, "cached": 0.05,  "audio_input": 1.00},
+    "gemini-3.1-pro-preview":        {"input": 2.00, "output": 12.00, "cached": 0.20, "audio_input": 2.00},
+    "gemini-2.5-flash":              {"input": 0.30, "output": 2.50, "cached": 0.03,  "audio_input": 1.00},
+    "gemini-2.5-pro":                {"input": 1.25, "output": 10.00, "cached": 0.125, "audio_input": 1.25},
+    "gemini-2.5-flash-lite":         {"input": 0.10, "output": 0.40, "cached": 0.01,  "audio_input": 0.30},
+    "gemini-3.1-flash-lite-preview": {"input": 0.25, "output": 1.50, "cached": 0.025, "audio_input": 0.50},
 }
 
 
@@ -56,7 +58,7 @@ def _price_for(model: str) -> dict[str, float]:
     for key, val in PRICING.items():
         if model.startswith(key) or key.startswith(model):
             return val
-    return {"input": 0.0, "output": 0.0, "cached": 0.0}
+    return {"input": 0.0, "output": 0.0, "cached": 0.0, "audio_input": 0.0}
 
 
 # ---------------------------------------------------------------------------
