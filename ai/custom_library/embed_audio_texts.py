@@ -23,6 +23,17 @@ PROGRESS_INTERVAL = 50
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser()
     parser.add_argument("--limit", type=int, default=None, help="Number of audio descriptions to embed")
+    parser.add_argument(
+        "--source-group",
+        choices=["ambience", "cinematic", "dialogue_vo", "foley", "sfx", "music"],
+        default=None,
+        help="Only embed audio descriptions whose asset source_group matches this value",
+    )
+    parser.add_argument(
+        "--missing-only",
+        action="store_true",
+        help="Only embed missing targets for each audio description",
+    )
     return parser.parse_args()
 
 
@@ -52,30 +63,75 @@ def main() -> None:
     print(f"[embed] model={EMBEDDING_MODEL}, dim={EMBEDDING_DIM}, token_count_enabled={ENABLE_TOKEN_COUNT}")
     with get_conn() as conn:
         with conn.cursor() as cur:
-            if args.limit is None:
-                cur.execute(
+            where_clauses = []
+            params = []
+
+            if args.source_group is not None:
+                where_clauses.append("aa.source_group = %s")
+                params.append(args.source_group)
+
+            if args.missing_only:
+                where_clauses.append(
                     """
-                    SELECT id, short_caption_en, long_caption_en
-                    FROM audio_descriptions
-                    ORDER BY id
+                    EXISTS (
+                        SELECT 1
+                        FROM (VALUES
+                            ('short_caption'),
+                            ('long_caption'),
+                            ('combined_caption')
+                        ) AS targets(embedding_target)
+                        WHERE NOT EXISTS (
+                            SELECT 1
+                            FROM audio_embeddings ae
+                            WHERE ae.audio_description_id = ad.id
+                              AND ae.embedding_target = targets.embedding_target
+                              AND ae.embedding_model = %s
+                        )
+                    )
                     """
                 )
-            else:
-                cur.execute(
-                    """
-                    SELECT id, short_caption_en, long_caption_en
-                    FROM audio_descriptions
-                    ORDER BY id
-                    LIMIT %s
-                    """,
-                    (args.limit,),
-                )
+                params.append(EMBEDDING_MODEL)
+
+            where_sql = ""
+            if where_clauses:
+                where_sql = "WHERE " + " AND ".join(where_clauses)
+
+            limit_sql = ""
+            if args.limit is not None:
+                limit_sql = "LIMIT %s"
+                params.append(args.limit)
+
+            cur.execute(
+                f"""
+                SELECT ad.id, ad.short_caption_en, ad.long_caption_en
+                FROM audio_descriptions ad
+                JOIN audio_assets aa ON aa.id = ad.audio_asset_id
+                {where_sql}
+                ORDER BY ad.id
+                {limit_sql}
+                """,
+                tuple(params),
+            )
             rows = cur.fetchall()
             total_descriptions = len(rows)
             print(f"[embed] selected descriptions={total_descriptions}")
 
             for index, (audio_description_id, short_caption, long_caption) in enumerate(rows, start=1):
                 for target, builder in EMBEDDING_TARGET_BUILDERS.items():
+                    if args.missing_only:
+                        cur.execute(
+                            """
+                            SELECT 1
+                            FROM audio_embeddings
+                            WHERE audio_description_id = %s
+                              AND embedding_target = %s
+                              AND embedding_model = %s
+                            """,
+                            (audio_description_id, target, EMBEDDING_MODEL),
+                        )
+                        if cur.fetchone():
+                            continue
+
                     embedding_text = builder(short_caption, long_caption)
                     token_count = count_tokens(embedding_text)
                     vector = embed_document(embedding_text)
@@ -153,4 +209,3 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
-

@@ -782,3 +782,30 @@ gemini-embedding-2-preview
 7. 영어 자연어 직접 검색 스크립트 추가
 8. `tags_structured` embedding 실험 여부 결정
 9. PoC 품질이 괜찮으면 `back` 통합 설계 진행
+## Cinematic 그룹 반영 메모
+
+2026-04-21 기준으로 PoC 검색 대상에 `cinematic` 그룹을 추가했습니다.
+
+변경된 동작:
+
+- `load_video_events.py`는 이제 `foley`, `sfx`, `cinematic` 이벤트를 저장합니다.
+- `search_events.py`는 `track = cinematic` 이벤트를 `audio_assets.source_group = cinematic` 후보군에서 검색합니다.
+- `review_ui.py`는 `cinematic` 후보의 로컬 미리보기 재생을 위해 `sound_library/Cinematic` 폴더를 fallback 검색합니다.
+- `custom_library`의 스키마와 `infer_source_group()`은 이미 `cinematic`을 허용합니다.
+
+주의할 점:
+
+- Cinematic 오디오 결과 JSON이 `ai/gemini-audio-classify/result`에 있어야 합니다.
+- S3 기준 적재를 사용할 경우 `.env`의 `AWS_S3_PREFIXES`에 Cinematic 경로가 포함되어야 합니다.
+- Cinematic asset과 description을 새로 적재한 뒤에는 `embed_audio_texts.py`를 다시 실행해야 합니다.
+- 기존 영상 이벤트/검색 결과에는 cinematic 이벤트가 빠져 있을 수 있으므로 `load_video_events.py`, `search_events.py`를 다시 실행해야 합니다.
+
+권장 재실행 순서:
+
+```powershell
+python ..\custom_library\load_audio_assets.py
+python ..\custom_library\embed_audio_texts.py
+python load_video_events.py
+python search_events.py
+python review_ui.py
+```

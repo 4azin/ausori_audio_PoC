@@ -51,6 +51,8 @@ def map_track_to_source_group(track: str) -> str | None:
         return "foley"
     if track == "sfx":
         return "sfx"
+    if track == "cinematic":
+        return "cinematic"
     return None
 
 

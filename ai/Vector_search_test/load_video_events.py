@@ -8,7 +8,7 @@ from settings import VIDEO_JSON_PATH
 from utils import load_json
 
 
-ALLOWED_TRACKS = {"foley", "sfx"}
+ALLOWED_TRACKS = {"foley", "sfx", "cinematic"}
 
 
 def build_project_key() -> str:

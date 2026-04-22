@@ -41,7 +41,11 @@ gemini-audio-classify/runs/
 
 # Langfuse local compose secrets/state
 langfuse/.env
+langfuse/.env.*
+!langfuse/.env.example
 langfuse_for_audio/.env
+langfuse_for_audio/.env.*
+!langfuse_for_audio/.env.example
 
 # Vector search PoC local runtime artifacts
 Vector_search_test/.env
@@ -52,3 +56,30 @@ Vector_search_test/*.log
 Vector_search_test/*.db
 Vector_search_test/*.sqlite
 Vector_search_test/*.sqlite3
+
+# Custom audio library local runtime artifacts
+custom_library/.env
+custom_library/.env.*
+!custom_library/.env.example
+custom_library/runs/
+custom_library/__pycache__/
+custom_library/*.log
+custom_library/*.db
+custom_library/*.sqlite
+custom_library/*.sqlite3
+
+# Video analysis local/generated artifacts
+video-analysis/.env
+video-analysis/.env.*
+!video-analysis/.env.example
+video-analysis/__pycache__/
+video-analysis/output/
+video-analysis/outputs/
+video-analysis/result/
+video-analysis/results/
+video-analysis/runs/
+video-analysis/*.mp4
+video-analysis/*.mov
+video-analysis/*.avi
+video-analysis/*.mkv
+video-analysis/*.log

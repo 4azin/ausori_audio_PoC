@@ -14,6 +14,11 @@ from settings import SOUND_LIBRARY_ROOT
 
 CURRENT_MATCHES: list[dict[str, Any]] = []
 PREVIEW_DIR = Path(__file__).resolve().parent / ".audio_preview"
+LOCAL_AUDIO_ROOTS = {
+    "foley": SOUND_LIBRARY_ROOT / "Foley",
+    "sfx": SOUND_LIBRARY_ROOT / "Hard_SFX",
+    "cinematic": SOUND_LIBRARY_ROOT / "Cinematic",
+}
 
 
 def parse_args() -> argparse.Namespace:
@@ -105,9 +110,11 @@ def get_matches(event_id: int, top_k: int) -> list[dict[str, Any]]:
                     rr.category_match_score,
                     rr.tag_match_score,
                     aa.asset_key,
+                    aa.source_group,
                     aa.original_filename,
                     aa.local_file_path,
                     aa.relative_file_path,
+                    aa.s3_key,
                     ad.primary_class,
                     ad.second_class,
                     ad.short_caption_en,
@@ -132,13 +139,15 @@ def get_matches(event_id: int, top_k: int) -> list[dict[str, Any]]:
             "category_score": None if row[3] is None else float(row[3]),
             "tag_score": None if row[4] is None else float(row[4]),
             "asset_key": row[5],
-            "filename": row[6],
-            "local_file_path": row[7],
-            "relative_file_path": row[8],
-            "primary_class": row[9],
-            "second_class": row[10],
-            "short_caption": row[11],
-            "long_caption": row[12],
+            "source_group": row[6],
+            "filename": row[7],
+            "local_file_path": row[8],
+            "relative_file_path": row[9],
+            "s3_key": row[10],
+            "primary_class": row[11],
+            "second_class": row[12],
+            "short_caption": row[13],
+            "long_caption": row[14],
         }
         for row in rows
     ]
@@ -194,9 +203,46 @@ def build_preview_audio_path(source_path: Path) -> tuple[str | None, str | None]
         return str(source_path), f"ffmpeg preview conversion failed. Serving original file.\n{message}"
 
 
+def find_local_audio_fallback(match: dict[str, Any]) -> tuple[Path | None, str | None]:
+    source_group = match.get("source_group")
+    filename = match.get("filename")
+    if not filename:
+        return None, "No original filename is available."
+
+    roots: list[Path] = []
+    preferred_root = LOCAL_AUDIO_ROOTS.get(source_group)
+    if preferred_root is not None:
+        roots.append(preferred_root)
+    roots.extend(root for root in LOCAL_AUDIO_ROOTS.values() if root not in roots)
+
+    for root in roots:
+        if not root.exists():
+            continue
+        matches = list(root.rglob(filename))
+        if matches:
+            return matches[0], f"local_file_path was empty; resolved by filename under {root}."
+
+    return None, f"local_file_path is empty and no local file matched filename: {filename}"
+
+
 def build_match_detail(match: dict[str, Any]) -> tuple[str | None, str]:
-    candidate_path = Path(match["local_file_path"])
-    audio_path, preview_warning = build_preview_audio_path(candidate_path)
+    local_file_path = match.get("local_file_path")
+    if local_file_path:
+        candidate_path = Path(local_file_path)
+        audio_path, preview_warning = build_preview_audio_path(candidate_path)
+    else:
+        fallback_path, fallback_message = find_local_audio_fallback(match)
+        if fallback_path is not None:
+            audio_path, preview_warning = build_preview_audio_path(fallback_path)
+            preview_warning = (
+                fallback_message
+                if preview_warning is None
+                else f"{fallback_message}\n{preview_warning}"
+            )
+            local_file_path = str(fallback_path)
+        else:
+            audio_path = None
+            preview_warning = fallback_message
 
     detail = (
         f"Selected match rank: {match['rank']}\n\n"
@@ -207,9 +253,11 @@ def build_match_detail(match: dict[str, Any]) -> tuple[str | None, str]:
         f"category_score: {match['category_score']}\n"
         f"tag_score: {match['tag_score']}\n"
         f"class: {match['primary_class']} / {match['second_class']}\n\n"
+        f"source_group: {match['source_group']}\n"
+        f"s3_key: {match['s3_key']}\n\n"
         f"short_caption:\n{match['short_caption']}\n\n"
         f"long_caption:\n{match['long_caption']}\n\n"
-        f"path:\n{match['local_file_path']}"
+        f"path:\n{local_file_path}"
     )
     if preview_warning:
         detail += f"\n\npreview warning:\n{preview_warning}"
